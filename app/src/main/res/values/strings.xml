@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RadarRower</string>
+    <string name="notif_channel_service">Połączenie z radarem</string>
+    <string name="notif_channel_service_desc">Stały status połączenia z radarem W100</string>
+</resources>
