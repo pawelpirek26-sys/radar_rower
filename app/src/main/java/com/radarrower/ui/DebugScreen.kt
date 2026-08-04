@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,7 +45,7 @@ fun DebugScreen() {
         if (!paused && log.isNotEmpty()) listState.animateScrollToItem(log.size - 1)
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxSize().systemBarsPadding().padding(12.dp)) {
         Text("Debug — surowe pakiety", fontSize = 22.sp, color = MaterialTheme.colorScheme.primary)
         Text(
             "Weryfikacja formatu W100: trójki [ID, dystans m, prędkość km/h] po bajcie licznika.",
