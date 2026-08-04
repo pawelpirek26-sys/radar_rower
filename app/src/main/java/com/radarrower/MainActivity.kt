@@ -116,13 +116,6 @@ class MainActivity : ComponentActivity() {
                 onRequestBattery = { requestIgnoreBatteryOptimizations() },
             ) { permissionsGranted = hasAllPermissions() }
 
-            currentSettings.deviceMac == null || screen == Screen.SCAN -> ScanScreen { device ->
-                scope.launch {
-                    settingsRepo.saveDevice(device.mac, device.name)
-                    screen = Screen.RIDE
-                }
-            }
-
             screen == Screen.DEBUG -> BackHandlerTo({ screen = Screen.RIDE }) { DebugScreen() }
 
             screen == Screen.SETTINGS -> BackHandlerTo({ screen = Screen.RIDE }) {
@@ -146,6 +139,16 @@ class MainActivity : ComponentActivity() {
                     },
                     onRequestIgnoreBattery = { requestIgnoreBatteryOptimizations() },
                 )
+            }
+
+            // ustawienia (wyżej) dostępne też bez sparowanego radaru — testy dźwięku/baterii
+            currentSettings.deviceMac == null || screen == Screen.SCAN -> ScanScreen(
+                onOpenSettings = { screen = Screen.SETTINGS },
+            ) { device ->
+                scope.launch {
+                    settingsRepo.saveDevice(device.mac, device.name)
+                    screen = Screen.RIDE
+                }
             }
 
             else -> RideScreen(
