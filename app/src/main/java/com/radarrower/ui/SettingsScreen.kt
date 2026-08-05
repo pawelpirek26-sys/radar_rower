@@ -49,6 +49,7 @@ fun SettingsScreen(
     onScanAgain: () -> Unit,
 ) {
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
+    val battery by RadarRepository.batteryLevel.collectAsStateWithLifecycle()
     val versionName = LocalContext.current.let { ctx ->
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }
             .getOrNull() ?: "?"
@@ -139,10 +140,14 @@ fun SettingsScreen(
                     ConnectionState.RECONNECTING -> "ponawianie połączenia…"
                     ConnectionState.SCANNING -> "szukanie…"
                     ConnectionState.DISCONNECTED -> "rozłączono"
+                    ConnectionState.INCOMPATIBLE -> "urządzenie niezgodne (brak serwisu radaru)"
                 },
                 fontSize = 14.sp,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            battery?.let {
+                Text("Bateria radaru: $it%", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            }
             Row(modifier = Modifier.padding(top = 8.dp)) {
                 Button(onClick = onScanAgain) {
                     Text("Zmień radar")

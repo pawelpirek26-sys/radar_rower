@@ -15,6 +15,9 @@ enum class ConnectionState {
     CONNECTING,
     CONNECTED,
     RECONNECTING,
+
+    /** Sparowane urządzenie nie ma serwisu radarowego — trzeba wybrać inne. */
+    INCOMPATIBLE,
 }
 
 /** Poziom zagrożenia — steruje kolorem UI i alertami. */
@@ -58,6 +61,9 @@ object RadarRepository {
     private val _threatLevel = MutableStateFlow(ThreatLevel.CLEAR)
     val threatLevel = _threatLevel.asStateFlow()
 
+    private val _batteryLevel = MutableStateFlow<Int?>(null)
+    val batteryLevel = _batteryLevel.asStateFlow()
+
     private val _alerts = MutableSharedFlow<AlertEvent>(extraBufferCapacity = 16)
     val alerts = _alerts.asSharedFlow()
 
@@ -78,9 +84,14 @@ object RadarRepository {
     fun setConnectionState(state: ConnectionState, name: String? = null) {
         _connectionState.value = state
         if (name != null) _deviceName.value = name
-        if (state == ConnectionState.DISCONNECTED || state == ConnectionState.RECONNECTING) {
+        if (state != ConnectionState.CONNECTED) {
             resetTargets()
+            _batteryLevel.value = null
         }
+    }
+
+    fun setBatteryLevel(percent: Int) {
+        _batteryLevel.value = percent.coerceIn(0, 100)
     }
 
     fun setRedThreshold(kmh: Int) {

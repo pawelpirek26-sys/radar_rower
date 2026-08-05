@@ -53,6 +53,7 @@ fun RideScreen(
     val targets by RadarRepository.targets.collectAsStateWithLifecycle()
     val threat by RadarRepository.threatLevel.collectAsStateWithLifecycle()
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
+    val battery by RadarRepository.batteryLevel.collectAsStateWithLifecycle()
 
     val connected = connection == ConnectionState.CONNECTED
     val bgColor by animateColorAsState(
@@ -86,11 +87,13 @@ fun RideScreen(
         ) {
             Text(
                 text = when (connection) {
-                    ConnectionState.CONNECTED -> "● RADAR"
+                    ConnectionState.CONNECTED ->
+                        "● RADAR" + (battery?.let { "  🔋$it%" } ?: "")
                     ConnectionState.CONNECTING -> "○ ŁĄCZENIE…"
                     ConnectionState.RECONNECTING -> "○ PONAWIAM…"
                     ConnectionState.SCANNING -> "○ SZUKANIE…"
                     ConnectionState.DISCONNECTED -> "○ ROZŁĄCZONO"
+                    ConnectionState.INCOMPATIBLE -> "○ ZŁE URZĄDZENIE"
                 },
                 color = if (connection == ConnectionState.CONNECTED) accent else Color(0xFFB0B6BC),
                 fontSize = 18.sp,
@@ -135,6 +138,7 @@ fun RideScreen(
                     text = when (connection) {
                         ConnectionState.CONNECTING -> "ŁĄCZENIE…"
                         ConnectionState.RECONNECTING -> "PONAWIAM…"
+                        ConnectionState.INCOMPATIBLE -> "TO NIE RADAR"
                         else -> "BRAK POŁĄCZENIA"
                     },
                     color = Color.White,
@@ -142,7 +146,11 @@ fun RideScreen(
                     fontWeight = FontWeight.Black,
                 )
                 Text(
-                    text = "Sprawdź, czy radar jest włączony",
+                    text = if (connection == ConnectionState.INCOMPATIBLE) {
+                        "Wybierz inne urządzenie: Ustawienia → Zmień radar"
+                    } else {
+                        "Sprawdź, czy radar jest włączony"
+                    },
                     color = Color(0xFF9AA0A6),
                     fontSize = 16.sp,
                 )

@@ -87,6 +87,15 @@ class RadarService : Service(), BleRadarClient.Listener {
         scope.launch {
             RadarRepository.targets.collect { updateNotification() }
         }
+        // okresowe odświeżanie poziomu baterii radaru
+        scope.launch {
+            while (true) {
+                delay(10 * 60 * 1000)
+                if (RadarRepository.connectionState.value == ConnectionState.CONNECTED) {
+                    client?.requestBatteryRead()
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -131,6 +140,15 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     override fun onPacket(data: ByteArray) {
         RadarRepository.onRadarPacket(data)
+    }
+
+    override fun onBattery(levelPercent: Int) {
+        RadarRepository.setBatteryLevel(levelPercent)
+    }
+
+    override fun onIncompatible() {
+        // celowo BEZ scheduleReconnect — pętla łączenia z nie-radarem nie ma sensu
+        RadarRepository.setConnectionState(ConnectionState.INCOMPATIBLE)
     }
 
     private fun acquireWakeLock() {
@@ -202,6 +220,7 @@ class RadarService : Service(), BleRadarClient.Listener {
             ConnectionState.RECONNECTING -> "Zerwane połączenie — ponawiam…"
             ConnectionState.SCANNING -> "Szukanie radaru…"
             ConnectionState.DISCONNECTED -> "Rozłączono"
+            ConnectionState.INCOMPATIBLE -> "Urządzenie nie jest radarem — wybierz inne"
         }
 
         val contentIntent = PendingIntent.getActivity(

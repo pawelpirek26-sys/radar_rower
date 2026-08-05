@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -67,13 +68,18 @@ fun ScanScreen(
     var btOff by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
     var searchingLong by remember { mutableStateOf(false) }
+    var allDevices by remember { mutableStateOf(false) }
 
-    DisposableEffect(attempt) {
+    DisposableEffect(attempt, allDevices) {
         devices.clear()
         val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
         btOff = adapter?.isEnabled != true
         val scanner = RadarScanner(context)
-        scanning = if (btOff) false else scanner.start { device -> devices[device.mac] = device }
+        scanning = if (btOff) {
+            false
+        } else {
+            scanner.start(allDevices) { device -> devices[device.mac] = device }
+        }
         onDispose { scanner.stop() }
     }
 
@@ -104,10 +110,22 @@ fun ScanScreen(
             }
         }
         Text(
-            "Obudź radar W100 (włącz go) i trzymaj blisko telefonu.",
-            fontSize = 16.sp,
-            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+            "Obudź radar (włącz go) i trzymaj blisko telefonu. Działa z W100, " +
+                "Garmin Varia, Bryton Gardia, Magene, iGPSPORT i innymi zgodnymi.",
+            fontSize = 15.sp,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
         )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Pokaż wszystkie urządzenia BLE",
+                fontSize = 14.sp,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(checked = allDevices, onCheckedChange = { allDevices = it })
+        }
 
         when {
             btOff -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -170,7 +188,12 @@ fun ScanScreen(
             }
 
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(devices.values.sortedByDescending { it.rssi }, key = { it.mac }) { device ->
+                val sorted = devices.values.sortedWith(
+                    compareByDescending<FoundDevice> { it.hasRadarService }
+                        .thenByDescending { it.nameLooksLikeRadar }
+                        .thenByDescending { it.rssi }
+                )
+                items(sorted, key = { it.mac }) { device ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -191,8 +214,21 @@ fun ScanScreen(
                                     .weight(1f)
                                     .padding(start = 12.dp),
                             ) {
-                                Text(device.name ?: "Radar (bez nazwy)", fontSize = 20.sp)
+                                Text(device.name ?: "Urządzenie bez nazwy", fontSize = 20.sp)
                                 Text(device.mac, fontSize = 13.sp)
+                                Text(
+                                    text = when {
+                                        device.hasRadarService -> "Protokół radaru ✓"
+                                        device.nameLooksLikeRadar -> "Rozpoznany po nazwie"
+                                        else -> "Nieznane urządzenie"
+                                    },
+                                    fontSize = 12.sp,
+                                    color = if (device.hasRadarService) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outline
+                                    },
+                                )
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("${device.rssi} dBm", fontSize = 14.sp)

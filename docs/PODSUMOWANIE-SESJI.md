@@ -122,3 +122,16 @@ Alerty grają w słuchawkach (BT/przewodowe/USB), gdy są podłączone:
   alert zawsze z głośnika telefonu, nawet przy podłączonych słuchawkach.
 Urządzenie referencyjne usera: Pixel 9 Pro (Android 17 beta); wspierany zakres
 bez zmian — minSdk 26 (Android 8.0+), targetSdk 35.
+
+## Aktualizacja 2026-08-05 — obsługa innych radarów + bateria (v0.4.0)
+
+- Skaner bez filtra systemowego: klasyfikacja w kodzie — serwis radarowy Varia
+  („Protokół radaru ✓") > znana nazwa (Varia/RTL/RVR/RCT, Gardia, Magene/L508,
+  iGPSPORT/SR30, CarBack, W100) > reszta; przełącznik „Pokaż wszystkie
+  urządzenia BLE" dla nietypowych klonów, sort: pewne > po nazwie > RSSI.
+- Ochrona przed złym wyborem: urządzenie bez serwisu radarowego po połączeniu
+  dostaje stan INCOMPATIBLE (ekran „TO NIE RADAR", notyfikacja, bez pętli
+  reconnect) — wystarczy Ustawienia → Zmień radar.
+- Poziom baterii radaru ze standardowego serwisu BLE Battery (0x180F/0x2A19):
+  odczyt po połączeniu + odświeżanie co 10 min; 🔋% na ekranie jazdy
+  i w Ustawieniach. Wspólny dla wszystkich producentów.

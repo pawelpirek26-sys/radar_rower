@@ -1,7 +1,9 @@
 # RadarRower
 
-Natywna aplikacja Android (Kotlin + Jetpack Compose) — wyświetlacz dla radaru
-rowerowego **W100** (protokół BLE zgodny z Garmin Varia). Pokazuje nadjeżdżające
+Natywna aplikacja Android (Kotlin + Jetpack Compose) — wyświetlacz dla radarów
+rowerowych zgodnych z protokołem BLE **Garmin Varia**: W100, Garmin Varia
+(RTL510/515/516, RVR315, RCT715, eRTL615), Bryton Gardia R300, Magene L508,
+iGPSPORT SR30, Trek CarBack i inne klony. Pokazuje nadjeżdżające
 z tyłu auta na pionowym „pasie drogi", alarmuje dźwiękiem i wibracją, działa
 z zablokowanym ekranem i telefonem w kieszeni.
 

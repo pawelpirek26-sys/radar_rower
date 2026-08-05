@@ -29,6 +29,12 @@ class BleRadarClient(
         fun onConnected(deviceName: String?)
         fun onDisconnected()
         fun onPacket(data: ByteArray)
+
+        /** Poziom baterii radaru w %, ze standardowego serwisu Battery (0x180F). */
+        fun onBattery(levelPercent: Int)
+
+        /** Urządzenie po połączeniu NIE ma serwisu radarowego — nie ponawiać. */
+        fun onIncompatible()
     }
 
     companion object {
@@ -42,6 +48,10 @@ class BleRadarClient(
 
         /** Standardowy deskryptor Client Characteristic Configuration. */
         val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+        /** Standardowy serwis Battery — wspólny dla radarów wszystkich producentów. */
+        val BATTERY_SERVICE_UUID: UUID = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
+        val BATTERY_LEVEL_UUID: UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
     }
 
     private var gatt: BluetoothGatt? = null
@@ -67,6 +77,16 @@ class BleRadarClient(
             gatt?.close()
         }
         gatt = null
+    }
+
+    /** Odśwież poziom baterii (wołane okresowo przez serwis). */
+    fun requestBatteryRead() {
+        gatt?.let { readBattery(it) }
+    }
+
+    private fun readBattery(g: BluetoothGatt) {
+        val ch = g.getService(BATTERY_SERVICE_UUID)?.getCharacteristic(BATTERY_LEVEL_UUID) ?: return
+        runCatching { g.readCharacteristic(ch) }
     }
 
     private val callback = object : BluetoothGattCallback() {
@@ -95,8 +115,12 @@ class BleRadarClient(
             val characteristic = g.getService(RADAR_SERVICE_UUID)
                 ?.getCharacteristic(RADAR_DATA_UUID)
             if (characteristic == null) {
+                // urządzenie sparowane po nazwie może nie być radarem — bez pętli retry
                 Log.w(TAG, "Brak serwisu/charakterystyki radarowej na urządzeniu")
-                g.disconnect()
+                closed = true
+                runCatching { g.disconnect(); g.close() }
+                gatt = null
+                listener.onIncompatible()
                 return
             }
             enableNotifications(g, characteristic)
@@ -121,9 +145,39 @@ class BleRadarClient(
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
             if (d.uuid == CCCD_UUID && status == BluetoothGatt.GATT_SUCCESS) {
                 listener.onConnected(runCatching { g.device.name }.getOrNull())
+                readBattery(g) // dopiero po CCCD — operacje GATT muszą iść sekwencyjnie
             } else if (d.uuid == CCCD_UUID) {
                 Log.w(TAG, "CCCD write failed: $status")
                 g.disconnect()
+            }
+        }
+
+        // API 33+: wartość odczytu podana wprost
+        override fun onCharacteristicRead(
+            g: BluetoothGatt,
+            ch: BluetoothGattCharacteristic,
+            value: ByteArray,
+            status: Int,
+        ) {
+            if (status == BluetoothGatt.GATT_SUCCESS) handleRead(ch, value)
+        }
+
+        // API < 33
+        @Deprecated("Deprecated in Java")
+        override fun onCharacteristicRead(
+            g: BluetoothGatt,
+            ch: BluetoothGattCharacteristic,
+            status: Int,
+        ) {
+            if (Build.VERSION.SDK_INT >= 33) return
+            @Suppress("DEPRECATION")
+            val value = ch.value ?: return
+            if (status == BluetoothGatt.GATT_SUCCESS) handleRead(ch, value)
+        }
+
+        private fun handleRead(ch: BluetoothGattCharacteristic, value: ByteArray) {
+            if (ch.uuid == BATTERY_LEVEL_UUID && value.isNotEmpty()) {
+                listener.onBattery(value[0].toInt() and 0xFF)
             }
         }
 
