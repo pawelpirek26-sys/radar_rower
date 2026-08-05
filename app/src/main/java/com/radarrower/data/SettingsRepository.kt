@@ -23,6 +23,7 @@ data class AppSettings(
     val independentVolume: Boolean,
     val volume: Float,
     val vibrationEnabled: Boolean,
+    val playOnHeadphones: Boolean,
     val batteryPromptDismissed: Boolean,
 )
 
@@ -38,6 +39,7 @@ class SettingsRepository(private val context: Context) {
         val INDEPENDENT_VOLUME = booleanPreferencesKey("independent_volume")
         val VOLUME = floatPreferencesKey("volume")
         val VIBRATION = booleanPreferencesKey("vibration_enabled")
+        val PLAY_ON_HEADPHONES = booleanPreferencesKey("play_on_headphones")
         val BATTERY_PROMPT_DISMISSED = booleanPreferencesKey("battery_prompt_dismissed")
     }
 
@@ -52,6 +54,7 @@ class SettingsRepository(private val context: Context) {
             independentVolume = p[Keys.INDEPENDENT_VOLUME] ?: true,
             volume = p[Keys.VOLUME] ?: 0.9f,
             vibrationEnabled = p[Keys.VIBRATION] ?: true,
+            playOnHeadphones = p[Keys.PLAY_ON_HEADPHONES] ?: true,
             batteryPromptDismissed = p[Keys.BATTERY_PROMPT_DISMISSED] ?: false,
         )
     }
@@ -92,6 +95,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setVibrationEnabled(value: Boolean) =
         context.dataStore.edit { it[Keys.VIBRATION] = value }
+
+    suspend fun setPlayOnHeadphones(value: Boolean) =
+        context.dataStore.edit { it[Keys.PLAY_ON_HEADPHONES] = value }
 
     suspend fun setBatteryPromptDismissed(value: Boolean) =
         context.dataStore.edit { it[Keys.BATTERY_PROMPT_DISMISSED] = value }

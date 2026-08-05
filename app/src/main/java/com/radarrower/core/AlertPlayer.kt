@@ -2,7 +2,9 @@ package com.radarrower.core
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Build
 import android.os.VibrationEffect
@@ -21,11 +23,27 @@ import kotlin.math.sin
  * + wibracje. Strumień wyjściowy konfigurowalny: USAGE_ALARM (niezależny od
  * głośności mediów) lub USAGE_MEDIA. Działa przy zgaszonym ekranie — wołany
  * z serwisu foreground.
+ *
+ * Słuchawki: gdy podłączone są słuchawki (BT/przewodowe/USB) i user tego chce
+ * ([AppSettings.playOnHeadphones]), alert jest kierowany wprost do nich przez
+ * setPreferredDevice — także przy strumieniu ALARM, który na części telefonów
+ * domyślnie gra tylko z głośnika. Bezczynne słuchawki BT budzą się ułamek
+ * sekundy, więc przed tonem dokładana jest cisza rozbiegowa (inaczej początek
+ * beepu byłby ucięty). Przy wyłączonym przełączniku alert gra ZAWSZE
+ * z głośnika telefonu, nawet gdy słuchawki są podłączone.
  */
 class AlertPlayer(context: Context) {
 
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(Dispatchers.Default)
+
+    private val headsetTypes = setOf(
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+        AudioDeviceInfo.TYPE_WIRED_HEADSET,
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+        AudioDeviceInfo.TYPE_USB_HEADSET,
+        AudioDeviceInfo.TYPE_BLE_HEADSET, // stała inline'owana — bezpieczna też na API <31
+    )
 
     @Volatile
     var settings: AppSettings? = null
@@ -81,11 +99,22 @@ class AlertPlayer(context: Context) {
      */
     private fun playTone(s: AppSettings, freqs: FloatArray, durationsMs: LongArray) {
         val sampleRate = 22050
-        val totalMs = durationsMs.sum()
-        val totalSamples = (sampleRate * totalMs / 1000).toInt()
+
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        val headset = outputs.firstOrNull { it.type in headsetTypes }
+        val speaker = outputs.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+        val preferred = if (s.playOnHeadphones) headset else speaker
+
+        // cisza rozbiegowa: BT audio wybudza się z bezczynności i ucina początek
+        val leadMs = if (s.playOnHeadphones && headset != null) 300L else 0L
+        val leadSamples = (sampleRate * leadMs / 1000).toInt()
+
+        val totalMs = leadMs + durationsMs.sum()
+        val totalSamples = leadSamples + (sampleRate * durationsMs.sum() / 1000).toInt()
         val pcm = ShortArray(totalSamples)
 
-        var offset = 0
+        var offset = leadSamples
         for (i in freqs.indices) {
             val n = (sampleRate * durationsMs[i] / 1000).toInt()
             val f = freqs[i]
@@ -126,6 +155,7 @@ class AlertPlayer(context: Context) {
                 .setBufferSizeInBytes(pcm.size * 2)
                 .build()
             track.write(pcm, 0, pcm.size)
+            if (preferred != null) track.setPreferredDevice(preferred)
             if (s.independentVolume) track.setVolume(s.volume)
             track.play()
             // zwolnij po zakończeniu odtwarzania

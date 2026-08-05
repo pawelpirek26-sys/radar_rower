@@ -42,6 +42,7 @@ fun SettingsScreen(
     onIndependentVolume: (Boolean) -> Unit,
     onVolume: (Float) -> Unit,
     onVibration: (Boolean) -> Unit,
+    onPlayOnHeadphones: (Boolean) -> Unit,
     onTestSound: () -> Unit,
     onForgetDevice: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
@@ -83,6 +84,17 @@ fun SettingsScreen(
             settings.useAlarmStream,
             onUseAlarmStream,
         )
+        SwitchRow(
+            "Graj w słuchawkach, jeśli podłączone",
+            settings.playOnHeadphones,
+            onPlayOnHeadphones,
+        )
+        if (!settings.playOnHeadphones) {
+            Text(
+                "Alerty zawsze z głośnika telefonu — nawet gdy słuchawki są podłączone.",
+                fontSize = 13.sp,
+            )
+        }
         SwitchRow("Własna głośność aplikacji", settings.independentVolume, onIndependentVolume)
         if (settings.independentVolume) {
             Text("Głośność: ${(settings.volume * 100).roundToInt()}%", fontSize = 16.sp)

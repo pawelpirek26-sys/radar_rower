@@ -110,3 +110,15 @@ kod usunięty z repo mini-baselinker (PR #5 zamknięty bez merge'a) i przeniesio
 - Ustawienia: stan połączenia na żywo, „Zmień radar" (skan bez zapominania),
   sekcja „O aplikacji" z wersją.
 - Debug: licznik pakietów w nagłówku (N/300).
+
+## Aktualizacja 2026-08-05 — obsługa słuchawek (v0.3.0)
+
+Alerty grają w słuchawkach (BT/przewodowe/USB), gdy są podłączone:
+- AudioTrack.setPreferredDevice kieruje dźwięk wprost do słuchawek — także przy
+  strumieniu ALARM, który na części telefonów domyślnie gra tylko z głośnika;
+- 300 ms ciszy rozbiegowej przed tonem, bo bezczynne słuchawki BT wybudzają się
+  ułamek sekundy i ucinałyby początek beepu;
+- przełącznik „Graj w słuchawkach, jeśli podłączone" (domyślnie ON); OFF =
+  alert zawsze z głośnika telefonu, nawet przy podłączonych słuchawkach.
+Urządzenie referencyjne usera: Pixel 9 Pro (Android 17 beta); wspierany zakres
+bez zmian — minSdk 26 (Android 8.0+), targetSdk 35.
