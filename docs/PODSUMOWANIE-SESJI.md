@@ -155,3 +155,16 @@ bez zmian — minSdk 26 (Android 8.0+), targetSdk 35.
   log Debug) — pełne doświadczenie apki bez radaru. Auta pojawiają się co
   kilka sekund (czasem kolumna dwóch, co ~4. szybkie = czerwony), demo
   zatrzymuje prawdziwy serwis na czas działania i przywraca go po wyłączeniu.
+
+## Aktualizacja 2026-08-06 — retro mini-auta, motyw jasny/ciemny, tryb czuwania (v0.7.0)
+
+- Auta na pasie drogi to teraz retro mini-samochody z góry (karoseria, szyby,
+  koła — wzorowane na screenshocie usera); kolor auta per cel: pomarańczowe /
+  czerwone gdy prędkość >= progu. Rowerzysta = pikselowy trójnik, linia
+  środkowa = grube klocki.
+- Motyw jasny/ciemny za systemem: RoadPalette (ciemna/jasna) + lightColorScheme
+  + themes.xml/values-night. Jezdnia w jasnym celowo ciemna (kontrast aut).
+- Tryb czuwania (ikona księżyca na ekranie jazdy lub Ustawienia → Ekran):
+  po 10 s pustej drogi ekran gaśnie na czarno (OLED = piksele wyłączone),
+  budzi się natychmiast po wykryciu auta przez radar; dotknięcie też budzi.
+  Dźwięki i wibracje działają w czuwaniu normalnie (gra je serwis).

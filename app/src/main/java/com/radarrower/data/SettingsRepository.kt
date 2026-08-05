@@ -17,6 +17,8 @@ data class AppSettings(
     val deviceMac: String?,
     val deviceName: String?,
     val keepScreenOn: Boolean,
+    /** Czuwanie: czarny ekran przy pustej drodze, zapala się po wykryciu auta. */
+    val standbyEnabled: Boolean,
     val redThresholdKmh: Int,
     val soundEnabled: Boolean,
     val useAlarmStream: Boolean,
@@ -37,6 +39,7 @@ class SettingsRepository(private val context: Context) {
         val DEVICE_MAC = stringPreferencesKey("device_mac")
         val DEVICE_NAME = stringPreferencesKey("device_name")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+        val STANDBY_ENABLED = booleanPreferencesKey("standby_enabled")
         val RED_THRESHOLD = intPreferencesKey("red_threshold_kmh")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val USE_ALARM_STREAM = booleanPreferencesKey("use_alarm_stream")
@@ -54,6 +57,7 @@ class SettingsRepository(private val context: Context) {
             deviceMac = p[Keys.DEVICE_MAC],
             deviceName = p[Keys.DEVICE_NAME],
             keepScreenOn = p[Keys.KEEP_SCREEN_ON] ?: true,
+            standbyEnabled = p[Keys.STANDBY_ENABLED] ?: false,
             redThresholdKmh = p[Keys.RED_THRESHOLD] ?: 50,
             soundEnabled = p[Keys.SOUND_ENABLED] ?: true,
             useAlarmStream = p[Keys.USE_ALARM_STREAM] ?: true,
@@ -85,6 +89,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setKeepScreenOn(value: Boolean) =
         context.dataStore.edit { it[Keys.KEEP_SCREEN_ON] = value }
+
+    suspend fun setStandbyEnabled(value: Boolean) =
+        context.dataStore.edit { it[Keys.STANDBY_ENABLED] = value }
 
     suspend fun setRedThreshold(kmh: Int) =
         context.dataStore.edit { it[Keys.RED_THRESHOLD] = kmh }

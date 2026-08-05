@@ -37,6 +37,7 @@ fun SettingsScreen(
     settings: AppSettings,
     batteryOptimized: Boolean,
     onKeepScreenOn: (Boolean) -> Unit,
+    onStandbyEnabled: (Boolean) -> Unit,
     onRedThreshold: (Int) -> Unit,
     onSoundEnabled: (Boolean) -> Unit,
     onUseAlarmStream: (Boolean) -> Unit,
@@ -71,6 +72,14 @@ fun SettingsScreen(
 
         Section("Ekran")
         SwitchRow("Nie wygaszaj ekranu podczas jazdy", settings.keepScreenOn, onKeepScreenOn)
+        SwitchRow("Czuwanie: czarny ekran, budzi się przy aucie", settings.standbyEnabled, onStandbyEnabled)
+        if (settings.standbyEnabled) {
+            Text(
+                "Przy pustej drodze ekran gaśnie na czarno (OLED oszczędza baterię) " +
+                    "i zapala się sam, gdy radar wykryje pojazd. Dotknięcie też budzi.",
+                fontSize = 13.sp,
+            )
+        }
 
         Section("Alert czerwony")
         Text(
