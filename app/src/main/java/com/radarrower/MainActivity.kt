@@ -42,8 +42,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.radarrower.core.AlertEvent
 import com.radarrower.core.AlertPlayer
+import com.radarrower.core.DemoSimulator
 import com.radarrower.data.SettingsRepository
 import com.radarrower.service.RadarService
 import com.radarrower.ui.DebugScreen
@@ -79,6 +81,7 @@ class MainActivity : ComponentActivity() {
         var permissionsGranted by remember { mutableStateOf(hasAllPermissions()) }
         var batteryOptimized by remember { mutableStateOf(isBatteryOptimized()) }
         var screen by remember { mutableStateOf(Screen.RIDE) }
+        var demoMode by remember { mutableStateOf(DemoSimulator.isRunning) }
 
         // odśwież stan uprawnień/baterii po powrocie z systemowych dialogów
         val lifecycleOwner = LocalLifecycleOwner.current
@@ -106,7 +109,7 @@ class MainActivity : ComponentActivity() {
 
         // auto-start serwisu, gdy jest sparowany radar i komplet uprawnień
         LaunchedEffect(permissionsGranted, currentSettings.deviceMac) {
-            if (permissionsGranted && currentSettings.deviceMac != null) {
+            if (permissionsGranted && currentSettings.deviceMac != null && !demoMode) {
                 RadarService.start(context)
             }
         }
@@ -145,7 +148,22 @@ class MainActivity : ComponentActivity() {
                         testPlayer.settings = currentSettings.copy(soundTheme = v)
                         testPlayer.play(AlertEvent.NEW_VEHICLE)
                     },
+                    onUrgentVolume = { v -> scope.launch { settingsRepo.setUrgentVolume(v) } },
+                    demoMode = demoMode,
+                    onDemoMode = { on ->
+                        demoMode = on
+                        if (on) {
+                            // demo zastępuje prawdziwy serwis — nie mieszać źródeł pakietów
+                            RadarService.stop(context)
+                            DemoSimulator.start(lifecycleScope)
+                            screen = Screen.RIDE
+                        } else {
+                            DemoSimulator.stop()
+                            if (currentSettings.deviceMac != null) RadarService.start(context)
+                        }
+                    },
                     onTestSound = { testPlayer.play(AlertEvent.NEW_VEHICLE) },
+                    onTestUrgent = { testPlayer.play(AlertEvent.URGENT) },
                     onForgetDevice = {
                         scope.launch {
                             RadarService.stop(context)
@@ -158,8 +176,9 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            // ustawienia (wyżej) dostępne też bez sparowanego radaru — testy dźwięku/baterii
-            currentSettings.deviceMac == null || screen == Screen.SCAN -> ScanScreen(
+            // ustawienia (wyżej) dostępne też bez sparowanego radaru — testy dźwięku/baterii;
+            // tryb demo pokazuje ekran jazdy nawet bez sparowanego urządzenia
+            (currentSettings.deviceMac == null && !demoMode) || screen == Screen.SCAN -> ScanScreen(
                 onOpenSettings = { screen = Screen.SETTINGS },
             ) { device ->
                 scope.launch {

@@ -145,3 +145,13 @@ bez zmian — minSdk 26 (Android 8.0+), targetSdk 35.
   „Beep" (dotychczasowe), „Klakson" (stos harmonicznych, urgent = ta-taaa),
   „Dzwonek" (nieharmoniczny alikwot + eksponencjalne wybrzmiewanie, ding-ding).
   Sygnał „czysto" w każdym brzmieniu łagodny.
+
+## Aktualizacja 2026-08-05 — osobna głośność czerwonego + tryb demo (v0.6.0)
+
+- Osobny suwak „Głośność czerwonego alertu" (domyślnie 90% vs 60% zwykłych) +
+  przycisk „Testuj czerwony". Pilny alert może grać głośno, gdy zwykłe są ciche.
+- Tryb demo (Ustawienia → Demo): DemoSimulator fabrykuje pakiety W FORMACIE
+  VARIA i wpuszcza je w normalny pipeline (parser → tracker → alerty → UI →
+  log Debug) — pełne doświadczenie apki bez radaru. Auta pojawiają się co
+  kilka sekund (czasem kolumna dwóch, co ~4. szybkie = czerwony), demo
+  zatrzymuje prawdziwy serwis na czas działania i przywraca go po wyłączeniu.

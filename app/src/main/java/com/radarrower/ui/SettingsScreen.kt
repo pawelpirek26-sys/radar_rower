@@ -45,7 +45,11 @@ fun SettingsScreen(
     onVibration: (Boolean) -> Unit,
     onPlayOnHeadphones: (Boolean) -> Unit,
     onSoundTheme: (String) -> Unit,
+    onUrgentVolume: (Float) -> Unit,
+    demoMode: Boolean,
+    onDemoMode: (Boolean) -> Unit,
     onTestSound: () -> Unit,
+    onTestUrgent: () -> Unit,
     onForgetDevice: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
     onScanAgain: () -> Unit,
@@ -120,9 +124,33 @@ fun SettingsScreen(
                 onValueChange = onVolume,
                 valueRange = 0.05f..1f,
             )
+            Text(
+                "Głośność czerwonego alertu: ${(settings.urgentVolume * 100).roundToInt()}%",
+                fontSize = 16.sp,
+            )
+            Slider(
+                value = settings.urgentVolume,
+                onValueChange = onUrgentVolume,
+                valueRange = 0.05f..1f,
+            )
         }
-        Button(onClick = onTestSound, modifier = Modifier.padding(top = 4.dp)) {
-            Text("Testuj dźwięk")
+        Row(modifier = Modifier.padding(top = 4.dp)) {
+            Button(onClick = onTestSound) {
+                Text("Testuj dźwięk")
+            }
+            Button(onClick = onTestUrgent, modifier = Modifier.padding(start = 8.dp)) {
+                Text("Testuj czerwony")
+            }
+        }
+
+        Section("Demo")
+        SwitchRow("Symulacja przejazdów aut (bez radaru)", demoMode, onDemoMode)
+        if (demoMode) {
+            Text(
+                "Ekran jazdy, alerty i log Debug działają na sztucznych pakietach " +
+                    "w formacie radaru. Wyłącz przed prawdziwą jazdą.",
+                fontSize = 13.sp,
+            )
         }
 
         Section("Wibracje")

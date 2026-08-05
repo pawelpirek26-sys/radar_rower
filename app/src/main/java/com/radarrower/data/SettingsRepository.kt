@@ -22,6 +22,8 @@ data class AppSettings(
     val useAlarmStream: Boolean,
     val independentVolume: Boolean,
     val volume: Float,
+    /** Osobna głośność pilnego (czerwonego) alertu — może grać głośniej niż reszta. */
+    val urgentVolume: Float,
     val vibrationEnabled: Boolean,
     val playOnHeadphones: Boolean,
     /** Brzmienie alertów: "beep" | "horn" (klakson) | "bell" (dzwonek). */
@@ -40,6 +42,7 @@ class SettingsRepository(private val context: Context) {
         val USE_ALARM_STREAM = booleanPreferencesKey("use_alarm_stream")
         val INDEPENDENT_VOLUME = booleanPreferencesKey("independent_volume")
         val VOLUME = floatPreferencesKey("volume")
+        val URGENT_VOLUME = floatPreferencesKey("urgent_volume")
         val VIBRATION = booleanPreferencesKey("vibration_enabled")
         val PLAY_ON_HEADPHONES = booleanPreferencesKey("play_on_headphones")
         val SOUND_THEME = stringPreferencesKey("sound_theme")
@@ -56,6 +59,7 @@ class SettingsRepository(private val context: Context) {
             useAlarmStream = p[Keys.USE_ALARM_STREAM] ?: true,
             independentVolume = p[Keys.INDEPENDENT_VOLUME] ?: true,
             volume = p[Keys.VOLUME] ?: 0.6f,
+            urgentVolume = p[Keys.URGENT_VOLUME] ?: 0.9f,
             vibrationEnabled = p[Keys.VIBRATION] ?: true,
             playOnHeadphones = p[Keys.PLAY_ON_HEADPHONES] ?: true,
             soundTheme = p[Keys.SOUND_THEME] ?: "beep",
@@ -96,6 +100,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setVolume(value: Float) =
         context.dataStore.edit { it[Keys.VOLUME] = value }
+
+    suspend fun setUrgentVolume(value: Float) =
+        context.dataStore.edit { it[Keys.URGENT_VOLUME] = value }
 
     suspend fun setVibrationEnabled(value: Boolean) =
         context.dataStore.edit { it[Keys.VIBRATION] = value }

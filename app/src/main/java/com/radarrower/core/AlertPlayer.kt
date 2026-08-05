@@ -62,7 +62,9 @@ class AlertPlayer(context: Context) {
         if (s.soundEnabled) {
             scope.launch {
                 val (freqs, durations) = tonesFor(s.soundTheme, event)
-                playTone(s, freqs, durations)
+                // pilny alert ma własną głośność — może grać głośniej niż zwykłe
+                val gain = if (event == AlertEvent.URGENT) s.urgentVolume else s.volume
+                playTone(s, freqs, durations, gain)
             }
         }
         if (s.vibrationEnabled) vibrate(event)
@@ -122,7 +124,7 @@ class AlertPlayer(context: Context) {
      * aplikacji (setVolume), a strumień ALARM dodatkowo uniezależnia od
      * głośności mediów; inaczej pełna skala względem strumienia.
      */
-    private fun playTone(s: AppSettings, freqs: FloatArray, durationsMs: LongArray) {
+    private fun playTone(s: AppSettings, freqs: FloatArray, durationsMs: LongArray, gain: Float) {
         val sampleRate = 22050
 
         val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -197,7 +199,7 @@ class AlertPlayer(context: Context) {
             if (s.independentVolume) {
                 // krzywa percepcyjna: gain liniowy brzmi „za głośno" na dole skali
                 // (10% liniowo to ledwie -20 dB); sześcian daje sensowny zakres
-                track.setVolume(s.volume * s.volume * s.volume)
+                track.setVolume(gain * gain * gain)
             }
             track.play()
             // zwolnij po zakończeniu odtwarzania
