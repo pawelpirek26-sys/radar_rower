@@ -18,9 +18,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.radarrower.core.ConnectionState
+import com.radarrower.core.RadarRepository
 import com.radarrower.data.AppSettings
 import kotlin.math.roundToInt
 
@@ -42,7 +45,13 @@ fun SettingsScreen(
     onTestSound: () -> Unit,
     onForgetDevice: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
+    onScanAgain: () -> Unit,
 ) {
+    val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
+    val versionName = LocalContext.current.let { ctx ->
+        runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }
+            .getOrNull() ?: "?"
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -111,10 +120,37 @@ fun SettingsScreen(
             fontSize = 14.sp,
         )
         if (settings.deviceMac != null) {
-            Button(onClick = onForgetDevice, modifier = Modifier.padding(top = 8.dp)) {
-                Text("Zapomnij urządzenie")
+            Text(
+                "Stan: " + when (connection) {
+                    ConnectionState.CONNECTED -> "połączono ✓"
+                    ConnectionState.CONNECTING -> "łączenie…"
+                    ConnectionState.RECONNECTING -> "ponawianie połączenia…"
+                    ConnectionState.SCANNING -> "szukanie…"
+                    ConnectionState.DISCONNECTED -> "rozłączono"
+                },
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Row(modifier = Modifier.padding(top = 8.dp)) {
+                Button(onClick = onScanAgain) {
+                    Text("Zmień radar")
+                }
+                Button(
+                    onClick = onForgetDevice,
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
+                    Text("Zapomnij urządzenie")
+                }
             }
         }
+
+        Section("O aplikacji")
+        Text(
+            "RadarRower $versionName — wyświetlacz radaru rowerowego W100 " +
+                "(BLE, protokół Garmin Varia).",
+            fontSize = 13.sp,
+            modifier = Modifier.padding(bottom = 16.dp),
+        )
     }
 }
 

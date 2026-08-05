@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -110,10 +113,16 @@ class MainActivity : ComponentActivity() {
 
         testPlayer.settings = currentSettings
 
+        // onboarding trzyma usera do skompletowania uprawnień; krok baterii można pominąć
+        val onboardingNeeded = !permissionsGranted ||
+            (batteryOptimized && !currentSettings.batteryPromptDismissed)
+
         when {
-            !permissionsGranted -> PermissionScreen(
+            onboardingNeeded -> PermissionScreen(
+                permissionsGranted = permissionsGranted,
                 batteryOptimized = batteryOptimized,
                 onRequestBattery = { requestIgnoreBatteryOptimizations() },
+                onSkipBattery = { scope.launch { settingsRepo.setBatteryPromptDismissed(true) } },
             ) { permissionsGranted = hasAllPermissions() }
 
             screen == Screen.DEBUG -> BackHandlerTo({ screen = Screen.RIDE }) { DebugScreen() }
@@ -138,6 +147,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onRequestIgnoreBattery = { requestIgnoreBatteryOptimizations() },
+                    onScanAgain = { screen = Screen.SCAN },
                 )
             }
 
@@ -166,8 +176,10 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PermissionScreen(
+        permissionsGranted: Boolean,
         batteryOptimized: Boolean,
         onRequestBattery: () -> Unit,
+        onSkipBattery: () -> Unit,
         onGranted: () -> Unit,
     ) {
         val launcher = rememberLauncherForActivityResult(
@@ -183,26 +195,78 @@ class MainActivity : ComponentActivity() {
         ) {
             Text("RadarRower", fontSize = 34.sp, color = MaterialTheme.colorScheme.primary)
             Text(
-                "Do działania radaru potrzebne są uprawnienia Bluetooth " +
-                    "oraz powiadomień (stały status połączenia).",
+                "Wyświetlacz radaru rowerowego W100. Dwa kroki i jedziemy:",
                 fontSize = 16.sp,
                 modifier = Modifier.padding(vertical = 16.dp),
             )
-            Button(
+            OnboardingStep(
+                done = permissionsGranted,
+                title = "1. Uprawnienia Bluetooth i powiadomień",
+                description = "Skanowanie i łączenie z radarem oraz stały status połączenia.",
+                buttonLabel = "Przyznaj uprawnienia",
                 onClick = { launcher.launch(requiredPermissions()) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Przyznaj uprawnienia", fontSize = 18.sp)
+            )
+            OnboardingStep(
+                done = !batteryOptimized,
+                title = "2. Optymalizacja baterii wyłączona",
+                description = "Bez tego system może zrywać połączenie przy zgaszonym ekranie " +
+                    "i telefonie w kieszeni.",
+                buttonLabel = "Wyłącz optymalizację",
+                onClick = onRequestBattery,
+            )
+            if (permissionsGranted && batteryOptimized) {
+                androidx.compose.material3.TextButton(
+                    onClick = onSkipBattery,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                ) {
+                    Text("Pomiń — zaryzykuję zrywanie połączenia")
+                }
             }
-            if (batteryOptimized) {
-                Text(
-                    "Zalecane: wyłącz optymalizację baterii, żeby system nie zrywał " +
-                        "połączenia przy zgaszonym ekranie.",
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-                )
-                Button(onClick = onRequestBattery, modifier = Modifier.fillMaxWidth()) {
-                    Text("Wyłącz optymalizację baterii")
+        }
+    }
+
+    @Composable
+    private fun OnboardingStep(
+        done: Boolean,
+        title: String,
+        description: String,
+        buttonLabel: String,
+        onClick: () -> Unit,
+    ) {
+        androidx.compose.material3.Card(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                androidx.compose.foundation.layout.Row(
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = if (done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                        contentDescription = null,
+                        tint = if (done) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        },
+                    )
+                    Text(
+                        title,
+                        fontSize = 17.sp,
+                        modifier = Modifier.padding(start = 10.dp),
+                    )
+                }
+                if (!done) {
+                    Text(
+                        description,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Button(
+                        onClick = onClick,
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    ) {
+                        Text(buttonLabel, fontSize = 16.sp)
+                    }
                 }
             }
         }

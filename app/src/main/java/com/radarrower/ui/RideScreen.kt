@@ -54,8 +54,10 @@ fun RideScreen(
     val threat by RadarRepository.threatLevel.collectAsStateWithLifecycle()
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
 
+    val connected = connection == ConnectionState.CONNECTED
     val bgColor by animateColorAsState(
-        targetValue = when (threat) {
+        // bez połączenia tło neutralne — zielony nie może udawać „droga czysta"
+        targetValue = if (!connected) Color(0xFF14181D) else when (threat) {
             ThreatLevel.CLEAR -> RoadColors.ClearBg
             ThreatLevel.VEHICLE -> RoadColors.VehicleBg
             ThreatLevel.URGENT -> RoadColors.UrgentBg
@@ -103,23 +105,46 @@ fun RideScreen(
             }
         }
 
-        // licznik aut — duży, do zerknięcia
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = if (targets.isEmpty()) "CZYSTO" else "${targets.size}",
-                color = Color.White,
-                fontSize = if (targets.isEmpty()) 44.sp else 72.sp,
-                fontWeight = FontWeight.Black,
-            )
-            if (targets.isNotEmpty()) {
+        if (connected) {
+            // licznik aut — duży, do zerknięcia
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = "  z tyłu",
-                    color = Color(0xFFD5DADF),
-                    fontSize = 28.sp,
+                    text = if (targets.isEmpty()) "CZYSTO" else "${targets.size}",
+                    color = Color.White,
+                    fontSize = if (targets.isEmpty()) 44.sp else 72.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                if (targets.isNotEmpty()) {
+                    Text(
+                        text = "  z tyłu",
+                        color = Color(0xFFD5DADF),
+                        fontSize = 28.sp,
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = when (connection) {
+                        ConnectionState.CONNECTING -> "ŁĄCZENIE…"
+                        ConnectionState.RECONNECTING -> "PONAWIAM…"
+                        else -> "BRAK POŁĄCZENIA"
+                    },
+                    color = Color.White,
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    text = "Sprawdź, czy radar jest włączony",
+                    color = Color(0xFF9AA0A6),
+                    fontSize = 16.sp,
                 )
             }
         }
@@ -146,6 +171,11 @@ private fun RoadStrip(
         textSize = 64f
         isAntiAlias = true
         typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+    val speedPaint = android.graphics.Paint().apply {
+        color = 0xFFB8BEC4.toInt()
+        textSize = 42f
+        isAntiAlias = true
     }
 
     Canvas(modifier = modifier) {
@@ -203,8 +233,14 @@ private fun RoadStrip(
             drawContext.canvas.nativeCanvas.drawText(
                 "${t.distanceM} m",
                 laneX + 56f,
-                cy + 22f,
+                cy + 8f,
                 textPaint,
+            )
+            drawContext.canvas.nativeCanvas.drawText(
+                "${t.speedKmh} km/h",
+                laneX + 56f,
+                cy + 56f,
+                speedPaint,
             )
         }
     }

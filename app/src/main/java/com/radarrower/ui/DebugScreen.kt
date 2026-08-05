@@ -46,7 +46,11 @@ fun DebugScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize().systemBarsPadding().padding(12.dp)) {
-        Text("Debug — surowe pakiety", fontSize = 22.sp, color = MaterialTheme.colorScheme.primary)
+        Text(
+            "Debug — surowe pakiety (${log.size}/${RadarRepository.MAX_DEBUG_PACKETS})",
+            fontSize = 22.sp,
+            color = MaterialTheme.colorScheme.primary,
+        )
         Text(
             "Weryfikacja formatu W100: trójki [ID, dystans m, prędkość km/h] po bajcie licznika.",
             fontSize = 13.sp,

@@ -82,3 +82,31 @@ w trójce, jednostka prędkości, rola bajtu 0).
 RadarRower to inna aplikacja niż mini-baselinker, więc projekt został odczepiony:
 kod usunięty z repo mini-baselinker (PR #5 zamknięty bez merge'a) i przeniesiony
 1:1 do tego samodzielnego repozytorium (projekt Gradle w korzeniu repo).
+
+## Aktualizacja 2026-08-05 — kompletny UX (v0.2.0)
+
+- Onboarding = checklista 2 kroków (uprawnienia, bateria) z odhaczaniem; krok
+  baterii można świadomie pominąć (zapamiętane w DataStore).
+- Skaner: obsługa wyłączonego Bluetootha (przycisk włączenia), pulsująca ikona,
+  po 15 s karta podpowiedzi (radar zajęty przez Garmina itd.), „Skanuj od nowa",
+  siła sygnału opisowo (blisko/średnio/daleko), wejście w Ustawienia zębatką.
+- Ekran jazdy: bez połączenia tło neutralne + duży komunikat (ŁĄCZENIE…/
+  PONAWIAM…/BRAK POŁĄCZENIA) — zielony nigdy nie udaje „czysto" bez radaru;
+  przy kropkach aut obok dystansu także prędkość w km/h.
+- Ustawienia: stan połączenia na żywo, „Zmień radar" (skan bez zapominania),
+  sekcja „O aplikacji" z wersją.
+- Debug: licznik pakietów w nagłówku (N/300).
+
+## Aktualizacja 2026-08-05 — kompletny UX (v0.2.0)
+
+- Onboarding = checklista 2 kroków (uprawnienia, bateria) z odhaczaniem; krok
+  baterii można świadomie pominąć (zapamiętane w DataStore).
+- Skaner: obsługa wyłączonego Bluetootha (przycisk włączenia), pulsująca ikona,
+  po 15 s karta podpowiedzi (radar zajęty przez Garmina itd.), „Skanuj od nowa",
+  siła sygnału opisowo (blisko/średnio/daleko), wejście w Ustawienia zębatką.
+- Ekran jazdy: bez połączenia tło neutralne + duży komunikat (ŁĄCZENIE…/
+  PONAWIAM…/BRAK POŁĄCZENIA) — zielony nigdy nie udaje „czysto" bez radaru;
+  przy kropkach aut obok dystansu także prędkość w km/h.
+- Ustawienia: stan połączenia na żywo, „Zmień radar" (skan bez zapominania),
+  sekcja „O aplikacji" z wersją.
+- Debug: licznik pakietów w nagłówku (N/300).
