@@ -139,6 +139,12 @@ class MainActivity : ComponentActivity() {
                     onVolume = { v -> scope.launch { settingsRepo.setVolume(v) } },
                     onVibration = { v -> scope.launch { settingsRepo.setVibrationEnabled(v) } },
                     onPlayOnHeadphones = { v -> scope.launch { settingsRepo.setPlayOnHeadphones(v) } },
+                    onSoundTheme = { v ->
+                        scope.launch { settingsRepo.setSoundTheme(v) }
+                        // natychmiastowy odsłuch wybranego brzmienia
+                        testPlayer.settings = currentSettings.copy(soundTheme = v)
+                        testPlayer.play(AlertEvent.NEW_VEHICLE)
+                    },
                     onTestSound = { testPlayer.play(AlertEvent.NEW_VEHICLE) },
                     onForgetDevice = {
                         scope.launch {

@@ -61,25 +61,50 @@ class AlertPlayer(context: Context) {
         val s = settings ?: return
         if (s.soundEnabled) {
             scope.launch {
-                when (event) {
-                    // nowy pojazd: podwójny średni beep
-                    AlertEvent.NEW_VEHICLE -> playTone(
-                        s, floatArrayOf(880f, 0f, 880f), longArrayOf(120, 70, 120)
-                    )
-                    // czerwony: potrójny szybki wysoki beep — pilniejszy
-                    AlertEvent.URGENT -> playTone(
-                        s, floatArrayOf(1400f, 0f, 1400f, 0f, 1400f),
-                        longArrayOf(90, 50, 90, 50, 180)
-                    )
-                    // czysto: łagodny akord wznoszący
-                    AlertEvent.ALL_CLEAR -> playTone(
-                        s, floatArrayOf(660f, 990f), longArrayOf(140, 220)
-                    )
-                }
+                val (freqs, durations) = tonesFor(s.soundTheme, event)
+                playTone(s, freqs, durations)
             }
         }
         if (s.vibrationEnabled) vibrate(event)
     }
+
+    /**
+     * Sekwencja tonów per brzmienie i zdarzenie (freq 0 = cisza).
+     * Sygnał „czysto" jest we wszystkich brzmieniach łagodny — klakson na pustej
+     * drodze byłby mylący.
+     */
+    private fun tonesFor(theme: String, event: AlertEvent): Pair<FloatArray, LongArray> =
+        when (theme) {
+            "horn" -> when (event) {
+                // krótki pojedynczy klakson
+                AlertEvent.NEW_VEHICLE ->
+                    floatArrayOf(420f) to longArrayOf(160)
+                // „ta-taaa" — dwa klaksony, drugi dłuższy i wyższy
+                AlertEvent.URGENT ->
+                    floatArrayOf(430f, 0f, 470f) to longArrayOf(130, 60, 300)
+                AlertEvent.ALL_CLEAR ->
+                    floatArrayOf(330f) to longArrayOf(220)
+            }
+            "bell" -> when (event) {
+                // ding-ding jak dzwonek rowerowy
+                AlertEvent.NEW_VEHICLE ->
+                    floatArrayOf(2093f, 0f, 2093f) to longArrayOf(200, 50, 260)
+                AlertEvent.URGENT ->
+                    floatArrayOf(2349f, 0f, 2349f, 0f, 2349f) to
+                        longArrayOf(160, 40, 160, 40, 280)
+                AlertEvent.ALL_CLEAR ->
+                    floatArrayOf(1568f) to longArrayOf(400)
+            }
+            else -> when (event) { // "beep"
+                AlertEvent.NEW_VEHICLE ->
+                    floatArrayOf(880f, 0f, 880f) to longArrayOf(120, 70, 120)
+                AlertEvent.URGENT ->
+                    floatArrayOf(1400f, 0f, 1400f, 0f, 1400f) to
+                        longArrayOf(90, 50, 90, 50, 180)
+                AlertEvent.ALL_CLEAR ->
+                    floatArrayOf(660f, 990f) to longArrayOf(140, 220)
+            }
+        }
 
     private fun vibrate(event: AlertEvent) {
         val v = vibrator ?: return
@@ -117,17 +142,30 @@ class AlertPlayer(context: Context) {
         var offset = leadSamples
         for (i in freqs.indices) {
             val n = (sampleRate * durationsMs[i] / 1000).toInt()
-            val f = freqs[i]
-            if (f > 0f) {
+            val f = freqs[i].toDouble()
+            if (f > 0.0) {
                 val attack = min(n / 8, sampleRate / 100)
                 for (j in 0 until n) {
+                    val t = j.toDouble() / sampleRate
+                    val w = 2.0 * PI * f * t
+                    // barwa zależna od brzmienia
+                    val raw = when (s.soundTheme) {
+                        // klakson: stos harmonicznych jak w prawdziwym sygnale
+                        "horn" -> (sin(w) + 0.6 * sin(2 * w) + 0.4 * sin(3 * w) +
+                            0.25 * sin(4 * w)) / 2.25
+                        // dzwonek: uderzenie + nieharmoniczny alikwot, wybrzmiewanie
+                        "bell" -> sin(w) * kotlin.math.exp(-6.0 * t) +
+                            0.4 * sin(2.4 * w) * kotlin.math.exp(-10.0 * t)
+                        else -> sin(w)
+                    }
                     // obwiednia: krótki attack/release, żeby nie trzaskało
+                    // (dzwonek wybrzmiewa sam — dostaje tylko attack)
                     val env = when {
                         j < attack -> j.toFloat() / attack
-                        j > n - attack -> (n - j).toFloat() / attack
+                        s.soundTheme != "bell" && j > n - attack -> (n - j).toFloat() / attack
                         else -> 1f
                     }
-                    val sample = sin(2.0 * PI * f * j / sampleRate) * env * 0.85
+                    val sample = raw * env * 0.6
                     if (offset + j < totalSamples) {
                         pcm[offset + j] = (sample * Short.MAX_VALUE).toInt().toShort()
                     }
@@ -156,7 +194,11 @@ class AlertPlayer(context: Context) {
                 .build()
             track.write(pcm, 0, pcm.size)
             if (preferred != null) track.setPreferredDevice(preferred)
-            if (s.independentVolume) track.setVolume(s.volume)
+            if (s.independentVolume) {
+                // krzywa percepcyjna: gain liniowy brzmi „za głośno" na dole skali
+                // (10% liniowo to ledwie -20 dB); sześcian daje sensowny zakres
+                track.setVolume(s.volume * s.volume * s.volume)
+            }
             track.play()
             // zwolnij po zakończeniu odtwarzania
             Thread.sleep(totalMs + 100)

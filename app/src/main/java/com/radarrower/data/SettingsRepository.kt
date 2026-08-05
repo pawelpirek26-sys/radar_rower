@@ -24,6 +24,8 @@ data class AppSettings(
     val volume: Float,
     val vibrationEnabled: Boolean,
     val playOnHeadphones: Boolean,
+    /** Brzmienie alertów: "beep" | "horn" (klakson) | "bell" (dzwonek). */
+    val soundTheme: String,
     val batteryPromptDismissed: Boolean,
 )
 
@@ -40,6 +42,7 @@ class SettingsRepository(private val context: Context) {
         val VOLUME = floatPreferencesKey("volume")
         val VIBRATION = booleanPreferencesKey("vibration_enabled")
         val PLAY_ON_HEADPHONES = booleanPreferencesKey("play_on_headphones")
+        val SOUND_THEME = stringPreferencesKey("sound_theme")
         val BATTERY_PROMPT_DISMISSED = booleanPreferencesKey("battery_prompt_dismissed")
     }
 
@@ -52,9 +55,10 @@ class SettingsRepository(private val context: Context) {
             soundEnabled = p[Keys.SOUND_ENABLED] ?: true,
             useAlarmStream = p[Keys.USE_ALARM_STREAM] ?: true,
             independentVolume = p[Keys.INDEPENDENT_VOLUME] ?: true,
-            volume = p[Keys.VOLUME] ?: 0.9f,
+            volume = p[Keys.VOLUME] ?: 0.6f,
             vibrationEnabled = p[Keys.VIBRATION] ?: true,
             playOnHeadphones = p[Keys.PLAY_ON_HEADPHONES] ?: true,
+            soundTheme = p[Keys.SOUND_THEME] ?: "beep",
             batteryPromptDismissed = p[Keys.BATTERY_PROMPT_DISMISSED] ?: false,
         )
     }
@@ -98,6 +102,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setPlayOnHeadphones(value: Boolean) =
         context.dataStore.edit { it[Keys.PLAY_ON_HEADPHONES] = value }
+
+    suspend fun setSoundTheme(value: String) =
+        context.dataStore.edit { it[Keys.SOUND_THEME] = value }
 
     suspend fun setBatteryPromptDismissed(value: Boolean) =
         context.dataStore.edit { it[Keys.BATTERY_PROMPT_DISMISSED] = value }

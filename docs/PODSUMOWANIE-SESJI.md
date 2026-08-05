@@ -135,3 +135,13 @@ bez zmian — minSdk 26 (Android 8.0+), targetSdk 35.
 - Poziom baterii radaru ze standardowego serwisu BLE Battery (0x180F/0x2A19):
   odczyt po połączeniu + odświeżanie co 10 min; 🔋% na ekranie jazdy
   i w Ustawieniach. Wspólny dla wszystkich producentów.
+
+## Aktualizacja 2026-08-05 — głośność percepcyjna + brzmienia alertów (v0.5.0)
+
+- Głośność: suwak działa teraz po krzywej sześciennej (gain liniowy przy 10%
+  to ledwie -20 dB — stąd „za głośno"); amplituda syntezy 0.85→0.6, domyślna
+  głośność 0.6, zakres suwaka od 5%. Feedback usera z realnego telefonu.
+- Brzmienia alertów do wyboru (FilterChips w Ustawieniach, tapnięcie = odsłuch):
+  „Beep" (dotychczasowe), „Klakson" (stos harmonicznych, urgent = ta-taaa),
+  „Dzwonek" (nieharmoniczny alikwot + eksponencjalne wybrzmiewanie, ding-ding).
+  Sygnał „czysto" w każdym brzmieniu łagodny.

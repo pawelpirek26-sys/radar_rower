@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -43,6 +44,7 @@ fun SettingsScreen(
     onVolume: (Float) -> Unit,
     onVibration: (Boolean) -> Unit,
     onPlayOnHeadphones: (Boolean) -> Unit,
+    onSoundTheme: (String) -> Unit,
     onTestSound: () -> Unit,
     onForgetDevice: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
@@ -80,6 +82,20 @@ fun SettingsScreen(
 
         Section("Dźwięk")
         SwitchRow("Dźwięki alertów", settings.soundEnabled, onSoundEnabled)
+        Text("Brzmienie alertu (tapnij = posłuchaj):", fontSize = 16.sp)
+        Row(
+            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+        ) {
+            listOf("beep" to "Beep", "horn" to "Klakson", "bell" to "Dzwonek")
+                .forEach { (id, label) ->
+                    FilterChip(
+                        selected = settings.soundTheme == id,
+                        onClick = { onSoundTheme(id) },
+                        label = { Text(label) },
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
+        }
         SwitchRow(
             "Strumień alarmu (niezależny od głośności mediów)",
             settings.useAlarmStream,
@@ -102,7 +118,7 @@ fun SettingsScreen(
             Slider(
                 value = settings.volume,
                 onValueChange = onVolume,
-                valueRange = 0.1f..1f,
+                valueRange = 0.05f..1f,
             )
         }
         Button(onClick = onTestSound, modifier = Modifier.padding(top = 4.dp)) {
