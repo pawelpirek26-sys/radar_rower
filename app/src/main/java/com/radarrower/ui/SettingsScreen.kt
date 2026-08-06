@@ -12,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -29,33 +30,32 @@ import com.radarrower.data.AppSettings
 import kotlin.math.roundToInt
 
 /**
- * Ustawienia: próg czerwonego alertu, dźwięki (strumień, głośność), wibracje,
- * keep screen on, zarządzanie sparowanym urządzeniem i optymalizacją baterii.
+ * Ustawienia — sekcje w kolejności „od radaru do ciekawostek":
+ * Radar / Ekran / Twój rower / Alerty / Bateria telefonu / Demo / O aplikacji.
  */
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
     batteryOptimized: Boolean,
-    onKeepScreenOn: (Boolean) -> Unit,
-    onStandbyEnabled: (Boolean) -> Unit,
+    demoMode: Boolean,
+    onScreenMode: (String) -> Unit,
     onRiderStyle: (String) -> Unit,
     onRedThreshold: (Int) -> Unit,
     onSoundEnabled: (Boolean) -> Unit,
+    onSoundTheme: (String) -> Unit,
     onUseAlarmStream: (Boolean) -> Unit,
     onIndependentVolume: (Boolean) -> Unit,
     onVolume: (Float) -> Unit,
-    onVibration: (Boolean) -> Unit,
-    onPlayOnHeadphones: (Boolean) -> Unit,
-    onSoundTheme: (String) -> Unit,
     onUrgentVolume: (Float) -> Unit,
-    demoMode: Boolean,
-    onDemoMode: (Boolean) -> Unit,
+    onPlayOnHeadphones: (Boolean) -> Unit,
     onTestSound: () -> Unit,
     onTestUrgent: () -> Unit,
-    onForgetDevice: () -> Unit,
+    onVibration: (Boolean) -> Unit,
+    onDemoMode: (Boolean) -> Unit,
     onRequestIgnoreBattery: () -> Unit,
     onScanAgain: () -> Unit,
     onReconnect: () -> Unit,
+    onForgetDevice: () -> Unit,
 ) {
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
     val battery by RadarRepository.batteryLevel.collectAsStateWithLifecycle()
@@ -63,6 +63,7 @@ fun SettingsScreen(
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }
             .getOrNull() ?: "?"
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,44 +73,92 @@ fun SettingsScreen(
     ) {
         Text("Ustawienia", fontSize = 26.sp, color = MaterialTheme.colorScheme.primary)
 
-        Section("Ekran")
-        SwitchRow("Nie wygaszaj ekranu podczas jazdy", settings.keepScreenOn, onKeepScreenOn)
-        SwitchRow("Czuwanie: czarny ekran, budzi się przy aucie", settings.standbyEnabled, onStandbyEnabled)
-        if (settings.standbyEnabled) {
+        // ------------------------------------------------ RADAR
+        Section("Radar")
+        if (settings.deviceMac == null) {
+            Text("Brak sparowanego radaru.", fontSize = 15.sp)
+            Button(onClick = onScanAgain, modifier = Modifier.padding(top = 8.dp)) {
+                Text("Szukaj radaru")
+            }
+        } else {
             Text(
-                "Przy pustej drodze ekran gaśnie na czarno (OLED oszczędza baterię) " +
-                    "i zapala się sam, gdy radar wykryje pojazd. Dotknięcie też budzi.",
-                fontSize = 13.sp,
+                "${settings.deviceName ?: "Radar"} (${settings.deviceMac})",
+                fontSize = 15.sp,
             )
-        }
-        Text("Twój rower na ekranie:", fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
-        Row(modifier = Modifier.padding(top = 4.dp)) {
-            listOf("gravel" to "Gravel", "road" to "Szosa", "mtb" to "MTB")
-                .forEach { (id, label) ->
-                    FilterChip(
-                        selected = settings.riderStyle == id,
-                        onClick = { onRiderStyle(id) },
-                        label = { Text(label) },
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
+            Text(
+                "Stan: " + when (connection) {
+                    ConnectionState.CONNECTED -> "połączono ✓" +
+                        (battery?.let { " · bateria $it%" } ?: "")
+                    ConnectionState.CONNECTING -> "łączenie…"
+                    ConnectionState.RECONNECTING -> "ponawianie połączenia…"
+                    ConnectionState.SCANNING -> "szukanie…"
+                    ConnectionState.DISCONNECTED -> "rozłączono"
+                    ConnectionState.INCOMPATIBLE -> "urządzenie niezgodne (brak serwisu radaru)"
+                },
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Button(
+                onClick = onReconnect,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) {
+                Text("Restartuj połączenie")
+            }
+            Row(modifier = Modifier.padding(top = 4.dp)) {
+                OutlinedButton(onClick = onScanAgain) {
+                    Text("Zmień radar")
                 }
-        }
-        Row {
-            listOf("city" to "Miejski", "kids" to "Dziecinny")
-                .forEach { (id, label) ->
-                    FilterChip(
-                        selected = settings.riderStyle == id,
-                        onClick = { onRiderStyle(id) },
-                        label = { Text(label) },
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
+                OutlinedButton(
+                    onClick = onForgetDevice,
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
+                    Text("Zapomnij")
                 }
+            }
         }
 
-        Section("Alert czerwony")
+        // ------------------------------------------------ EKRAN
+        Section("Ekran podczas jazdy")
+        ChipRow(
+            options = listOf(
+                "system" to "Systemowy",
+                "keepOn" to "Zawsze włączony",
+                "standby" to "Czuwanie",
+            ),
+            selected = settings.screenMode,
+            onSelect = onScreenMode,
+        )
         Text(
-            "Próg prędkości auta: ${settings.redThresholdKmh} km/h",
-            fontSize = 16.sp,
+            when (settings.screenMode) {
+                "system" -> "Ekran gaśnie jak zwykle. Dźwięki i wibracje działają " +
+                    "niezależnie — gra je serwis w tle."
+                "standby" -> "Ekran nie gaśnie, ale przy pustej drodze robi się czarny " +
+                    "(OLED oszczędza baterię) i budzi się sam, gdy radar wykryje auto. " +
+                    "Dotknięcie też budzi."
+                else -> "Ekran świeci przez całą jazdę — telefon na kierownicy."
+            },
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+
+        // ------------------------------------------------ ROWER
+        Section("Twój rower na ekranie")
+        ChipRow(
+            options = listOf("gravel" to "Gravel", "road" to "Szosa", "mtb" to "MTB"),
+            selected = settings.riderStyle,
+            onSelect = onRiderStyle,
+        )
+        ChipRow(
+            options = listOf("city" to "Miejski", "kids" to "Dziecinny"),
+            selected = settings.riderStyle,
+            onSelect = onRiderStyle,
+        )
+
+        // ------------------------------------------------ ALERTY
+        Section("Alerty")
+        Text(
+            "Czerwony alert, gdy auto jedzie szybciej niż: ${settings.redThresholdKmh} km/h",
+            fontSize = 15.sp,
         )
         Slider(
             value = settings.redThresholdKmh.toFloat(),
@@ -117,80 +166,58 @@ fun SettingsScreen(
             valueRange = 20f..120f,
             steps = 19,
         )
-
-        Section("Dźwięk")
         SwitchRow("Dźwięki alertów", settings.soundEnabled, onSoundEnabled)
-        Text("Brzmienie alertu (tapnij = posłuchaj):", fontSize = 16.sp)
-        Row(
-            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-        ) {
-            listOf("beep" to "Beep", "horn" to "Klakson", "bell" to "Dzwonek")
-                .forEach { (id, label) ->
-                    FilterChip(
-                        selected = settings.soundTheme == id,
-                        onClick = { onSoundTheme(id) },
-                        label = { Text(label) },
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
+        if (settings.soundEnabled) {
+            Text(
+                "Brzmienie (tapnij = posłuchaj):",
+                fontSize = 15.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            ChipRow(
+                options = listOf("beep" to "Beep", "horn" to "Klakson", "bell" to "Dzwonek"),
+                selected = settings.soundTheme,
+                onSelect = onSoundTheme,
+            )
+            SwitchRow(
+                "Strumień alarmu (głośność mediów bez znaczenia)",
+                settings.useAlarmStream,
+                onUseAlarmStream,
+            )
+            SwitchRow("Graj w słuchawkach, jeśli podłączone", settings.playOnHeadphones, onPlayOnHeadphones)
+            SwitchRow("Własna głośność aplikacji", settings.independentVolume, onIndependentVolume)
+            if (settings.independentVolume) {
+                Text("Zwykłe alerty: ${(settings.volume * 100).roundToInt()}%", fontSize = 14.sp)
+                Slider(
+                    value = settings.volume,
+                    onValueChange = onVolume,
+                    valueRange = 0.05f..1f,
+                )
+                Text(
+                    "Czerwony alert: ${(settings.urgentVolume * 100).roundToInt()}%",
+                    fontSize = 14.sp,
+                )
+                Slider(
+                    value = settings.urgentVolume,
+                    onValueChange = onUrgentVolume,
+                    valueRange = 0.05f..1f,
+                )
+            }
+            Row {
+                OutlinedButton(onClick = onTestSound) {
+                    Text("Testuj zwykły")
                 }
-        }
-        SwitchRow(
-            "Strumień alarmu (niezależny od głośności mediów)",
-            settings.useAlarmStream,
-            onUseAlarmStream,
-        )
-        SwitchRow(
-            "Graj w słuchawkach, jeśli podłączone",
-            settings.playOnHeadphones,
-            onPlayOnHeadphones,
-        )
-        if (!settings.playOnHeadphones) {
-            Text(
-                "Alerty zawsze z głośnika telefonu — nawet gdy słuchawki są podłączone.",
-                fontSize = 13.sp,
-            )
-        }
-        SwitchRow("Własna głośność aplikacji", settings.independentVolume, onIndependentVolume)
-        if (settings.independentVolume) {
-            Text("Głośność: ${(settings.volume * 100).roundToInt()}%", fontSize = 16.sp)
-            Slider(
-                value = settings.volume,
-                onValueChange = onVolume,
-                valueRange = 0.05f..1f,
-            )
-            Text(
-                "Głośność czerwonego alertu: ${(settings.urgentVolume * 100).roundToInt()}%",
-                fontSize = 16.sp,
-            )
-            Slider(
-                value = settings.urgentVolume,
-                onValueChange = onUrgentVolume,
-                valueRange = 0.05f..1f,
-            )
-        }
-        Row(modifier = Modifier.padding(top = 4.dp)) {
-            Button(onClick = onTestSound) {
-                Text("Testuj dźwięk")
-            }
-            Button(onClick = onTestUrgent, modifier = Modifier.padding(start = 8.dp)) {
-                Text("Testuj czerwony")
+                OutlinedButton(
+                    onClick = onTestUrgent,
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
+                    Text("Testuj czerwony")
+                }
             }
         }
+        SwitchRow("Wibracje", settings.vibrationEnabled, onVibration)
 
-        Section("Demo")
-        SwitchRow("Symulacja przejazdów aut (bez radaru)", demoMode, onDemoMode)
-        if (demoMode) {
-            Text(
-                "Ekran jazdy, alerty i log Debug działają na sztucznych pakietach " +
-                    "w formacie radaru. Wyłącz przed prawdziwą jazdą.",
-                fontSize = 13.sp,
-            )
-        }
-
-        Section("Wibracje")
-        SwitchRow("Wibracje przy alertach", settings.vibrationEnabled, onVibration)
-
-        Section("Bateria")
+        // ------------------------------------------------ BATERIA TELEFONU
+        Section("Bateria telefonu")
         if (batteryOptimized) {
             Text(
                 "System może ubijać połączenie w tle. Wyłącz optymalizację baterii dla RadarRower.",
@@ -204,51 +231,22 @@ fun SettingsScreen(
             Text("Optymalizacja baterii wyłączona — OK ✓", fontSize = 14.sp)
         }
 
-        Section("Urządzenie")
-        Text(
-            settings.deviceMac?.let { "Sparowany radar: ${settings.deviceName ?: "?"} ($it)" }
-                ?: "Brak sparowanego radaru",
-            fontSize = 14.sp,
-        )
-        if (settings.deviceMac != null) {
+        // ------------------------------------------------ DEMO
+        Section("Demo")
+        SwitchRow("Symulacja przejazdów aut (bez radaru)", demoMode, onDemoMode)
+        if (demoMode) {
             Text(
-                "Stan: " + when (connection) {
-                    ConnectionState.CONNECTED -> "połączono ✓"
-                    ConnectionState.CONNECTING -> "łączenie…"
-                    ConnectionState.RECONNECTING -> "ponawianie połączenia…"
-                    ConnectionState.SCANNING -> "szukanie…"
-                    ConnectionState.DISCONNECTED -> "rozłączono"
-                    ConnectionState.INCOMPATIBLE -> "urządzenie niezgodne (brak serwisu radaru)"
-                },
-                fontSize = 14.sp,
-                modifier = Modifier.padding(top = 4.dp),
+                "Ekran jazdy, alerty i log Debug działają na sztucznych pakietach " +
+                    "w formacie radaru. Wyłącz przed prawdziwą jazdą.",
+                fontSize = 13.sp,
             )
-            battery?.let {
-                Text("Bateria radaru: $it%", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-            }
-            Row(modifier = Modifier.padding(top = 8.dp)) {
-                Button(onClick = onScanAgain) {
-                    Text("Zmień radar")
-                }
-                Button(
-                    onClick = onForgetDevice,
-                    modifier = Modifier.padding(start = 8.dp),
-                ) {
-                    Text("Zapomnij urządzenie")
-                }
-            }
-            Button(
-                onClick = onReconnect,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) {
-                Text("Restartuj połączenie")
-            }
         }
 
+        // ------------------------------------------------ O APLIKACJI
         Section("O aplikacji")
         Text(
-            "RadarRower $versionName — wyświetlacz radaru rowerowego W100 " +
-                "(BLE, protokół Garmin Varia).",
+            "RadarRower $versionName — wyświetlacz radarów rowerowych zgodnych " +
+                "z protokołem Garmin Varia (W100, Varia, Gardia, Magene i inne).",
             fontSize = 13.sp,
             modifier = Modifier.padding(bottom = 16.dp),
         )
@@ -271,5 +269,23 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     ) {
         Text(label, fontSize = 16.sp, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun ChipRow(
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit,
+) {
+    Row(modifier = Modifier.padding(top = 4.dp)) {
+        options.forEach { (id, label) ->
+            FilterChip(
+                selected = selected == id,
+                onClick = { onSelect(id) },
+                label = { Text(label) },
+                modifier = Modifier.padding(end = 8.dp),
+            )
+        }
     }
 }

@@ -206,3 +206,18 @@ kółka, chorągiewka). Zapamiętany styl "moto" spada na domyślny gravel.
 - Ustawienia → Urządzenie: przycisk „Restartuj połączenie" — ACTION_START
   serwisu zeruje backoff, zrywa bieżące połączenie GATT i łączy od świeża
   (bez zabijania serwisu).
+
+## Aktualizacja 2026-08-06 — reorganizacja Ustawień + tryb ekranu (v0.9.0)
+
+- Feedback usera: „Nie wygaszaj ekranu" i „Czuwanie" wzajemnie się wykluczały.
+  Scalone w JEDEN wybór „Ekran podczas jazdy": Systemowy / Zawsze włączony /
+  Czuwanie (chipy + opis aktywnego trybu). Migracja ze starych kluczy DataStore
+  (standby > keepOn > system). Księżyc na ekranie jazdy przełącza keepOn↔standby.
+- Ustawienia przeorganizowane w sekcje: Radar (urządzenie, stan, bateria,
+  restart/zmiana/zapomnienie) → Ekran → Twój rower → Alerty (próg, dźwięki,
+  brzmienie, strumień, słuchawki, głośności, testy, wibracje) → Bateria
+  telefonu → Demo → O aplikacji. Opcje dźwięku chowają się przy wyłączonych
+  dźwiękach; przyciski drugorzędne jako Outlined.
+- „Rowery się nie zmieniają": różnice były za subtelne (grubość opon).
+  Teraz: gravel = gruba opona z drobnym bieżnikiem (dash), MTB = bardzo gruby
+  bieżnik terenowy, szosa = cienka gładka; do tego różna geometria/kierownice.

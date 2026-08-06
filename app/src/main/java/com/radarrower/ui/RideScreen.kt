@@ -33,6 +33,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
@@ -370,10 +371,14 @@ private fun DrawScope.drawSideBike(
 ) {
     when (style) {
         "kids" -> drawKidsBike(cx, cy, frame, wheel)
-        "road" -> drawSportBike(cx, cy, frame, wheel, tire = 5f)
+        "road" -> drawSportBike(cx, cy, frame, wheel, tire = 4f)
         "mtb" -> drawMtbBike(cx, cy, frame, wheel)
         "city" -> drawCityBike(cx, cy, frame, wheel)
-        else -> drawSportBike(cx, cy, frame, wheel, tire = 9f) // gravel: grubsze opony
+        // gravel: grube opony z drobnym bieżnikiem
+        else -> drawSportBike(
+            cx, cy, frame, wheel, tire = 10f,
+            dash = PathEffect.dashPathEffect(floatArrayOf(5f, 5f)),
+        )
     }
 }
 
@@ -384,12 +389,13 @@ private fun DrawScope.drawSportBike(
     frame: Color,
     wheel: Color,
     tire: Float,
+    dash: PathEffect? = null,
 ) {
     val r = 30f
     val rear = Offset(cx - 48f, cy + 14f)
     val front = Offset(cx + 48f, cy + 14f)
-    drawCircle(wheel, r, rear, style = Stroke(tire))
-    drawCircle(wheel, r, front, style = Stroke(tire))
+    drawCircle(wheel, r, rear, style = Stroke(tire, pathEffect = dash))
+    drawCircle(wheel, r, front, style = Stroke(tire, pathEffect = dash))
     drawCircle(frame, 5f, rear)
     drawCircle(frame, 5f, front)
 
@@ -451,8 +457,10 @@ private fun DrawScope.drawMtbBike(cx: Float, cy: Float, frame: Color, wheel: Col
     val r = 30f
     val rear = Offset(cx - 48f, cy + 14f)
     val front = Offset(cx + 48f, cy + 14f)
-    drawCircle(wheel, r, rear, style = Stroke(11f))
-    drawCircle(wheel, r, front, style = Stroke(11f))
+    // gruby bieżnik terenowy
+    val knobs = Stroke(13f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(9f, 7f)))
+    drawCircle(wheel, r, rear, style = knobs)
+    drawCircle(wheel, r, front, style = knobs)
     drawCircle(frame, 5f, rear)
     drawCircle(frame, 5f, front)
 

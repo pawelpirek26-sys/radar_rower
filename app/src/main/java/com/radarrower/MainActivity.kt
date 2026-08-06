@@ -99,9 +99,9 @@ class MainActivity : ComponentActivity() {
 
         val currentSettings = settings ?: return
 
-        // keep screen on wg ustawienia
-        LaunchedEffect(currentSettings.keepScreenOn) {
-            if (currentSettings.keepScreenOn) {
+        // podtrzymanie ekranu wg trybu (keepOn i standby podtrzymują)
+        LaunchedEffect(currentSettings.screenMode) {
+            if (currentSettings.screenMode != "system") {
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             } else {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -135,8 +135,7 @@ class MainActivity : ComponentActivity() {
                 SettingsScreen(
                     settings = currentSettings,
                     batteryOptimized = batteryOptimized,
-                    onKeepScreenOn = { v -> scope.launch { settingsRepo.setKeepScreenOn(v) } },
-                    onStandbyEnabled = { v -> scope.launch { settingsRepo.setStandbyEnabled(v) } },
+                    onScreenMode = { v -> scope.launch { settingsRepo.setScreenMode(v) } },
                     onRiderStyle = { v -> scope.launch { settingsRepo.setRiderStyle(v) } },
                     onRedThreshold = { v -> scope.launch { settingsRepo.setRedThreshold(v) } },
                     onSoundEnabled = { v -> scope.launch { settingsRepo.setSoundEnabled(v) } },
@@ -214,10 +213,12 @@ class MainActivity : ComponentActivity() {
                 RideScreen(
                     redThresholdKmh = currentSettings.redThresholdKmh,
                     riderStyle = currentSettings.riderStyle,
-                    standbyEnabled = currentSettings.standbyEnabled,
+                    standbyEnabled = currentSettings.screenMode == "standby",
                     onToggleStandby = {
                         scope.launch {
-                            settingsRepo.setStandbyEnabled(!currentSettings.standbyEnabled)
+                            settingsRepo.setScreenMode(
+                                if (currentSettings.screenMode == "standby") "keepOn" else "standby"
+                            )
                         }
                     },
                     onOpenSettings = { screen = Screen.SETTINGS },

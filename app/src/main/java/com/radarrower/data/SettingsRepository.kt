@@ -16,10 +16,16 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 data class AppSettings(
     val deviceMac: String?,
     val deviceName: String?,
-    val keepScreenOn: Boolean,
-    /** Czuwanie: czarny ekran przy pustej drodze, zapala się po wykryciu auta. */
-    val standbyEnabled: Boolean,
-    /** Sylwetka pojazdu na ekranie jazdy: "gravel" | "road" | "kids" | "moto". */
+    /**
+     * Tryb ekranu podczas jazdy — jedna spójna opcja zamiast dwóch
+     * wykluczających się przełączników:
+     *  "system" — ekran gaśnie jak zwykle (alerty i tak gra serwis),
+     *  "keepOn" — ekran świeci przez całą jazdę,
+     *  "standby" — ekran świeci, ale przy pustej drodze robi się czarny
+     *              i budzi się po wykryciu auta (oszczędza OLED).
+     */
+    val screenMode: String,
+    /** Sylwetka roweru na ekranie jazdy: gravel|road|mtb|city|kids. */
     val riderStyle: String,
     val redThresholdKmh: Int,
     val soundEnabled: Boolean,
@@ -40,8 +46,9 @@ class SettingsRepository(private val context: Context) {
     private object Keys {
         val DEVICE_MAC = stringPreferencesKey("device_mac")
         val DEVICE_NAME = stringPreferencesKey("device_name")
-        val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
-        val STANDBY_ENABLED = booleanPreferencesKey("standby_enabled")
+        val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on") // legacy
+        val STANDBY_ENABLED = booleanPreferencesKey("standby_enabled") // legacy
+        val SCREEN_MODE = stringPreferencesKey("screen_mode")
         val RIDER_STYLE = stringPreferencesKey("rider_style")
         val RED_THRESHOLD = intPreferencesKey("red_threshold_kmh")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
@@ -59,8 +66,12 @@ class SettingsRepository(private val context: Context) {
         AppSettings(
             deviceMac = p[Keys.DEVICE_MAC],
             deviceName = p[Keys.DEVICE_NAME],
-            keepScreenOn = p[Keys.KEEP_SCREEN_ON] ?: true,
-            standbyEnabled = p[Keys.STANDBY_ENABLED] ?: false,
+            // migracja ze starych przełączników: czuwanie > keep-on > system
+            screenMode = p[Keys.SCREEN_MODE] ?: when {
+                p[Keys.STANDBY_ENABLED] == true -> "standby"
+                p[Keys.KEEP_SCREEN_ON] == false -> "system"
+                else -> "keepOn"
+            },
             riderStyle = p[Keys.RIDER_STYLE] ?: "gravel",
             redThresholdKmh = p[Keys.RED_THRESHOLD] ?: 50,
             soundEnabled = p[Keys.SOUND_ENABLED] ?: true,
@@ -91,11 +102,8 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    suspend fun setKeepScreenOn(value: Boolean) =
-        context.dataStore.edit { it[Keys.KEEP_SCREEN_ON] = value }
-
-    suspend fun setStandbyEnabled(value: Boolean) =
-        context.dataStore.edit { it[Keys.STANDBY_ENABLED] = value }
+    suspend fun setScreenMode(value: String) =
+        context.dataStore.edit { it[Keys.SCREEN_MODE] = value }
 
     suspend fun setRiderStyle(value: String) =
         context.dataStore.edit { it[Keys.RIDER_STYLE] = value }
