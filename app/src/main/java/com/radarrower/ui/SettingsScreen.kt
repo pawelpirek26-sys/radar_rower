@@ -2,6 +2,7 @@ package com.radarrower.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,6 +64,7 @@ fun SettingsScreen(
     onVibration: (Boolean) -> Unit,
     onDemoMode: (Boolean) -> Unit,
     onRequestIgnoreBattery: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     onScanAgain: () -> Unit,
     onReconnect: () -> Unit,
     onForgetDevice: () -> Unit,
@@ -132,16 +134,20 @@ fun SettingsScreen(
         val context = LocalContext.current
         val nearbyOk = Permissions.hasNearby(context)
         val notifOk = Permissions.hasNotifications(context)
-        Text(
-            (if (nearbyOk) "✓" else "✗") + " Urządzenia w pobliżu (Bluetooth)",
-            fontSize = 15.sp,
-            color = if (nearbyOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+        PermissionRow(
+            ok = nearbyOk,
+            label = "Urządzenia w pobliżu (Bluetooth)",
+            onClick = onOpenAppSettings,
         )
-        Text(
-            (if (notifOk) "✓" else "✗") + " Powiadomienia",
-            fontSize = 15.sp,
-            color = if (notifOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(top = 2.dp),
+        PermissionRow(
+            ok = notifOk,
+            label = "Powiadomienia",
+            onClick = onOpenAppSettings,
+        )
+        PermissionRow(
+            ok = !batteryOptimized,
+            label = "Bez optymalizacji baterii (praca w tle)",
+            onClick = onRequestIgnoreBattery,
         )
         if (!nearbyOk || !notifOk) {
             val launcher = rememberLauncherForActivityResult(
@@ -286,21 +292,6 @@ fun SettingsScreen(
         }
         SwitchRow("Wibracje", settings.vibrationEnabled, onVibration)
 
-        // ------------------------------------------------ BATERIA TELEFONU
-        Section("Bateria telefonu")
-        if (batteryOptimized) {
-            Text(
-                "System może ubijać połączenie w tle. Wyłącz optymalizację baterii dla RadarRower.",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.error,
-            )
-            Button(onClick = onRequestIgnoreBattery, modifier = Modifier.padding(top = 8.dp)) {
-                Text("Wyłącz optymalizację baterii")
-            }
-        } else {
-            Text("Optymalizacja baterii wyłączona — OK ✓", fontSize = 14.sp)
-        }
-
         // ------------------------------------------------ DEMO
         Section("Demo")
         SwitchRow("Symulacja przejazdów aut (bez radaru)", demoMode, onDemoMode)
@@ -339,6 +330,25 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     ) {
         Text(label, fontSize = 16.sp, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun PermissionRow(ok: Boolean, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            (if (ok) "✓ " else "✗ ") + label,
+            fontSize = 15.sp,
+            color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f),
+        )
+        Text("zmień ›", fontSize = 13.sp, color = MaterialTheme.colorScheme.outline)
     }
 }
 

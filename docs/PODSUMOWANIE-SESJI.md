@@ -231,3 +231,16 @@ kółka, chorągiewka). Zapamiętany styl "moto" spada na domyślny gravel.
   „Przyznaj brakujące" oraz „Test wyszukiwania (5 s)" — realny 5-sekundowy skan
   BLE raportujący liczbę widzianych urządzeń (dowód, że uprawnienie DZIAŁA,
   a nie tylko figuruje jako przyznane).
+
+## Aktualizacja 2026-08-06 — bateria w Uprawnieniach, globalna blokada wyjścia, ikona PNG (v0.9.2)
+
+- Sekcja Uprawnienia ma teraz TRZY klikalne wiersze („zmień ›"): Urządzenia
+  w pobliżu i Powiadomienia → ustawienia aplikacji w systemie; Bez optymalizacji
+  baterii → systemowy dialog wyłączenia. Osobna sekcja „Bateria telefonu" scalona.
+- Blokada przypadkowego wyjścia PRZENIESIONA na poziom AppRoot — działała tylko
+  na ekranie jazdy, a przy niesparowanym radarze (skaner-korzeń) back wychodził
+  od razu. Teraz podwójne cofnięcie obowiązuje na każdym ekranie głównym;
+  podekrany (Ustawienia/Debug/skaner otwarty ręcznie) cofają do środka apki.
+- Ikona: wygenerowane PNG (Pillow) we wszystkich gęstościach mdpi–xxxhdpi +
+  ic_launcher_round + roundIcon w manifeście + adaptive round — ikona widoczna
+  wszędzie, w tym na liście aplikacji w ustawieniach systemu.

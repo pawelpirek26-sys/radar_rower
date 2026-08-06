@@ -118,6 +118,24 @@ class MainActivity : ComponentActivity() {
 
         testPlayer.settings = currentSettings
 
+        // globalna ochrona przed przypadkowym wyjściem — działa na KAŻDYM ekranie
+        // głównym (jazda, skaner, onboarding); podekrany rejestrują własne
+        // BackHandlery później, więc mają pierwszeństwo i cofają do środka apki
+        var lastBackMs by remember { mutableStateOf(0L) }
+        androidx.activity.compose.BackHandler {
+            val now = System.currentTimeMillis()
+            if (now - lastBackMs < 2_000) {
+                finish()
+            } else {
+                lastBackMs = now
+                Toast.makeText(
+                    context,
+                    "Naciśnij ponownie, aby wyjść (radar działa dalej w tle)",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+
         // onboarding trzyma usera do skompletowania uprawnień; krok baterii można pominąć
         val onboardingNeeded = !permissionsGranted ||
             (batteryOptimized && !currentSettings.batteryPromptDismissed)
@@ -175,6 +193,14 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onRequestIgnoreBattery = { requestIgnoreBatteryOptimizations() },
+                    onOpenAppSettings = {
+                        runCatching {
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    .setData(Uri.parse("package:$packageName"))
+                            )
+                        }
+                    },
                     onScanAgain = { screen = Screen.SCAN },
                     onReconnect = {
                         // ACTION_START zeruje backoff i wymusza świeże połączenie
@@ -186,31 +212,24 @@ class MainActivity : ComponentActivity() {
 
             // ustawienia (wyżej) dostępne też bez sparowanego radaru — testy dźwięku/baterii;
             // tryb demo pokazuje ekran jazdy nawet bez sparowanego urządzenia
-            (currentSettings.deviceMac == null && !demoMode) || screen == Screen.SCAN -> ScanScreen(
-                onOpenSettings = { screen = Screen.SETTINGS },
-            ) { device ->
-                scope.launch {
-                    settingsRepo.saveDevice(device.mac, device.name)
-                    screen = Screen.RIDE
+            (currentSettings.deviceMac == null && !demoMode) || screen == Screen.SCAN -> {
+                // skaner otwarty ręcznie (Zmień radar) cofa do jazdy;
+                // skaner-korzeń (brak sparowania) łapie globalna ochrona wyjścia
+                val scanIsRoot = currentSettings.deviceMac == null && !demoMode
+                if (!scanIsRoot) {
+                    androidx.activity.compose.BackHandler { screen = Screen.RIDE }
+                }
+                ScanScreen(
+                    onOpenSettings = { screen = Screen.SETTINGS },
+                ) { device ->
+                    scope.launch {
+                        settingsRepo.saveDevice(device.mac, device.name)
+                        screen = Screen.RIDE
+                    }
                 }
             }
 
             else -> {
-                // ochrona przed przypadkowym wyjściem: drugie cofnięcie w 2 s zamyka
-                var lastBackMs by remember { mutableStateOf(0L) }
-                androidx.activity.compose.BackHandler {
-                    val now = System.currentTimeMillis()
-                    if (now - lastBackMs < 2_000) {
-                        finish()
-                    } else {
-                        lastBackMs = now
-                        Toast.makeText(
-                            context,
-                            "Naciśnij ponownie, aby wyjść (radar działa dalej w tle)",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
                 RideScreen(
                     redThresholdKmh = currentSettings.redThresholdKmh,
                     riderStyle = currentSettings.riderStyle,
