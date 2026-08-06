@@ -54,6 +54,20 @@ private const val MAX_DISTANCE_M = 150f
 private const val STANDBY_DELAY_MS = 10_000L
 
 /**
+ * Paleta kolorów aut — każde nadjeżdżające auto ma własny, stały kolor
+ * (po ID celu), żeby dało się je rozróżnić na pasie. Czerwony jest
+ * zarezerwowany dla aut powyżej progu prędkości.
+ */
+private val CAR_COLORS = listOf(
+    Color(0xFFFF9800), // pomarańcz
+    Color(0xFFFFC107), // bursztyn
+    Color(0xFF29B6F6), // błękit
+    Color(0xFFAB47BC), // fiolet
+    Color(0xFF26C6DA), // cyjan
+    Color(0xFFEC407A), // róż
+)
+
+/**
  * Główny ekran jazdy: pionowy pas drogi — rowerzysta na dole, nadjeżdżające
  * auta jako retro mini-samochody schodzące z góry, z dystansem i prędkością.
  * Kolor tła według poziomu zagrożenia (motyw jasny/ciemny za systemem).
@@ -279,10 +293,10 @@ private fun RoadStrip(
             y += dashH
         }
 
-        // rowerzysta (zielony trójnik pixel-art) u góry, na prawym pasie
+        // rowerzysta (pixel-art rower z góry) u góry, na prawym pasie
         val riderX = size.width / 2f + roadWidth / 4f
-        drawPixelTriangle(riderX, riderY, palette.rider)
-        drawContext.canvas.nativeCanvas.drawText("TY", riderX - 24f, riderY + 90f, speedPaint)
+        drawPixelBike(riderX, riderY, palette.rider, palette.carWheel)
+        drawContext.canvas.nativeCanvas.drawText("TY", riderX - 24f, riderY + 104f, speedPaint)
 
         // auta doganiają: dystans 0 = tuż za rowerzystą (góra), MAX = dół pasa
         val laneX = size.width / 2f - roadWidth / 4f
@@ -291,10 +305,11 @@ private fun RoadStrip(
             val yNear = riderY + 130f
             val yFar = size.height - 80f
             val cy = yNear + (yFar - yNear) * frac
+            // każde auto ma własny kolor po ID; czerwony tylko dla szybkich
             val carColor = if (t.speedKmh >= redThresholdKmh) {
                 palette.urgentAccent
             } else {
-                palette.vehicleAccent
+                CAR_COLORS[t.id % CAR_COLORS.size]
             }
 
             drawPixelCar(laneX, cy, carColor, palette.carWindow, palette.carWheel)
@@ -342,22 +357,18 @@ private fun DrawScope.drawPixelCar(
     drawRect(body.copy(alpha = 0.7f), Offset(left + 8f, top + 8f), Size(w - 16f, 10f))
 }
 
-/** Pikselowy trójnik rowerzysty (schodkowe krawędzie jak w retro grach). */
-private fun DrawScope.drawPixelTriangle(cx: Float, cy: Float, color: Color) {
-    val steps = 6
-    val stepH = 14f
-    val stepW = 7f
-    for (i in 0 until steps) {
-        val halfW = stepW * (i + 1)
-        drawRect(
-            color,
-            Offset(cx - halfW, cy - 46f + i * stepH),
-            Size(halfW * 2f, stepH),
-        )
-    }
-    drawRect(
-        Color.White.copy(alpha = 0.9f),
-        Offset(cx - stepW * steps, cy - 46f + steps * stepH),
-        Size(stepW * steps * 2f, 5f),
-    )
+/** Pikselowy rowerzysta z góry: koła w linii, rama, kierownica, plecy i kask. */
+private fun DrawScope.drawPixelBike(cx: Float, cy: Float, frame: Color, wheel: Color) {
+    // koła (przód u góry — kierunek jazdy w górę ekranu)
+    drawRoundRect(wheel, Offset(cx - 7f, cy - 62f), Size(14f, 36f), CornerRadius(6f, 6f))
+    drawRoundRect(wheel, Offset(cx - 7f, cy + 26f), Size(14f, 40f), CornerRadius(6f, 6f))
+    // rama
+    drawRect(frame, Offset(cx - 5f, cy - 34f), Size(10f, 64f))
+    // kierownica
+    drawRoundRect(frame, Offset(cx - 32f, cy - 40f), Size(64f, 12f), CornerRadius(5f, 5f))
+    // plecy rowerzysty
+    drawRoundRect(frame, Offset(cx - 24f, cy - 12f), Size(48f, 36f), CornerRadius(14f, 14f))
+    // kask
+    drawCircle(Color.White, 14f, Offset(cx, cy - 2f))
+    drawCircle(frame, 14f, Offset(cx, cy - 2f), style = Stroke(width = 4f))
 }

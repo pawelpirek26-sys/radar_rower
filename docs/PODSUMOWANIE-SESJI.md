@@ -175,3 +175,11 @@ Feedback usera: radar patrzy DO TYŁU, a auta wyglądały jak jadące z naprzeci
 Odwrócona metafora ekranu: rowerzysta (trójnik + „TY") u GÓRY, auta wjeżdżają
 od dołu (140 m z tyłu) i wspinają się ku niemu, przednią szybą w jego stronę —
 doganiają. Lewy pas = wyprzedzanie (ruch prawostronny).
+
+## Aktualizacja 2026-08-06 — kolory per auto + rowerzysta zamiast trójkąta (v0.7.2)
+
+- Każde nadjeżdżające auto ma własny, stały kolor (paleta 6 kolorów po ID celu:
+  pomarańcz/bursztyn/błękit/fiolet/cyjan/róż) — łatwo rozróżnić auta w kolumnie.
+  Czerwony ZAREZERWOWANY dla aut powyżej progu prędkości (sygnał bezpieczeństwa).
+- Trójnik rowerzysty zastąpiony pikselowym rowerem z góry: koła w linii, rama,
+  kierownica, plecy i biały kask.
