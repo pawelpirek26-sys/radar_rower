@@ -252,10 +252,13 @@ private fun RoadStrip(
         isAntiAlias = true
     }
 
+    // Widok drogi ZA plecami (radar patrzy do tyłu): rowerzysta u góry,
+    // auta wjeżdżają od dołu (daleko z tyłu) i wspinają się ku niemu,
+    // przodem w jego stronę — doganiają, nie jadą z naprzeciwka.
     Canvas(modifier = modifier) {
         val roadWidth = size.width * 0.46f
         val roadLeft = (size.width - roadWidth) / 2f
-        val riderY = size.height * 0.94f
+        val riderY = 110f
 
         // jezdnia
         drawRoundRect(
@@ -276,17 +279,18 @@ private fun RoadStrip(
             y += dashH
         }
 
-        // rowerzysta (zielony trójnik pixel-art na prawym pasie)
+        // rowerzysta (zielony trójnik pixel-art) u góry, na prawym pasie
         val riderX = size.width / 2f + roadWidth / 4f
         drawPixelTriangle(riderX, riderY, palette.rider)
+        drawContext.canvas.nativeCanvas.drawText("TY", riderX - 24f, riderY + 90f, speedPaint)
 
-        // auta: dystans 0 = przy rowerzyście, MAX = góra pasa
+        // auta doganiają: dystans 0 = tuż za rowerzystą (góra), MAX = dół pasa
         val laneX = size.width / 2f - roadWidth / 4f
         targets.forEach { t ->
             val frac = (t.distanceM.coerceIn(0, MAX_DISTANCE_M.toInt()) / MAX_DISTANCE_M)
-            val yTop = 70f
-            val yBottom = riderY - 100f
-            val cy = yBottom - (yBottom - yTop) * frac
+            val yNear = riderY + 130f
+            val yFar = size.height - 80f
+            val cy = yNear + (yFar - yNear) * frac
             val carColor = if (t.speedKmh >= redThresholdKmh) {
                 palette.urgentAccent
             } else {
@@ -330,12 +334,12 @@ private fun DrawScope.drawPixelCar(
     }
     // karoseria
     drawRoundRect(body, Offset(left, top), Size(w, h), CornerRadius(16f, 16f))
-    // przednia szyba (auto jedzie w dół — ku rowerzyście)
-    drawRoundRect(window, Offset(left + 10f, top + h - 44f), Size(w - 20f, 22f), CornerRadius(7f, 7f))
+    // przednia szyba u GÓRY — auto jedzie w górę ekranu, dogania rowerzystę
+    drawRoundRect(window, Offset(left + 10f, top + 22f), Size(w - 20f, 22f), CornerRadius(7f, 7f))
     // tylna szyba
-    drawRoundRect(window, Offset(left + 10f, top + 18f), Size(w - 20f, 18f), CornerRadius(7f, 7f))
-    // maska — jaśniejszy pasek między szybą a przodem
-    drawRect(body.copy(alpha = 0.7f), Offset(left + 8f, top + h - 18f), Size(w - 16f, 10f))
+    drawRoundRect(window, Offset(left + 10f, top + h - 36f), Size(w - 20f, 18f), CornerRadius(7f, 7f))
+    // maska — jaśniejszy pasek nad przednią szybą
+    drawRect(body.copy(alpha = 0.7f), Offset(left + 8f, top + 8f), Size(w - 16f, 10f))
 }
 
 /** Pikselowy trójnik rowerzysty (schodkowe krawędzie jak w retro grach). */

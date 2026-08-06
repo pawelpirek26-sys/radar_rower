@@ -168,3 +168,10 @@ bez zmian — minSdk 26 (Android 8.0+), targetSdk 35.
   po 10 s pustej drogi ekran gaśnie na czarno (OLED = piksele wyłączone),
   budzi się natychmiast po wykryciu auta przez radar; dotknięcie też budzi.
   Dźwięki i wibracje działają w czuwaniu normalnie (gra je serwis).
+
+## Aktualizacja 2026-08-06 — orientacja „widok za plecami" (v0.7.1)
+
+Feedback usera: radar patrzy DO TYŁU, a auta wyglądały jak jadące z naprzeciwka.
+Odwrócona metafora ekranu: rowerzysta (trójnik + „TY") u GÓRY, auta wjeżdżają
+od dołu (140 m z tyłu) i wspinają się ku niemu, przednią szybą w jego stronę —
+doganiają. Lewy pas = wyprzedzanie (ruch prawostronny).
