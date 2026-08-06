@@ -64,7 +64,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RadarRowerTheme {
+            val themeSettings by SettingsRepository.get(this)
+                .settings.collectAsStateWithLifecycle(initialValue = null)
+            RadarRowerTheme(themeMode = themeSettings?.appTheme ?: "system") {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppRoot()
                 }
@@ -155,6 +157,7 @@ class MainActivity : ComponentActivity() {
                     settings = currentSettings,
                     batteryOptimized = batteryOptimized,
                     onScreenMode = { v -> scope.launch { settingsRepo.setScreenMode(v) } },
+                    onAppTheme = { v -> scope.launch { settingsRepo.setAppTheme(v) } },
                     onRiderStyle = { v -> scope.launch { settingsRepo.setRiderStyle(v) } },
                     onRedThreshold = { v -> scope.launch { settingsRepo.setRedThreshold(v) } },
                     onSoundEnabled = { v -> scope.launch { settingsRepo.setSoundEnabled(v) } },

@@ -25,6 +25,8 @@ data class AppSettings(
      *              i budzi się po wykryciu auta (oszczędza OLED).
      */
     val screenMode: String,
+    /** Motyw aplikacji: "system" | "light" | "dark". */
+    val appTheme: String,
     /** Sylwetka roweru na ekranie jazdy: gravel|road|mtb|city|kids. */
     val riderStyle: String,
     val redThresholdKmh: Int,
@@ -49,6 +51,7 @@ class SettingsRepository(private val context: Context) {
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on") // legacy
         val STANDBY_ENABLED = booleanPreferencesKey("standby_enabled") // legacy
         val SCREEN_MODE = stringPreferencesKey("screen_mode")
+        val APP_THEME = stringPreferencesKey("app_theme")
         val RIDER_STYLE = stringPreferencesKey("rider_style")
         val RED_THRESHOLD = intPreferencesKey("red_threshold_kmh")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
@@ -72,6 +75,7 @@ class SettingsRepository(private val context: Context) {
                 p[Keys.KEEP_SCREEN_ON] == false -> "system"
                 else -> "keepOn"
             },
+            appTheme = p[Keys.APP_THEME] ?: "system",
             riderStyle = p[Keys.RIDER_STYLE] ?: "gravel",
             redThresholdKmh = p[Keys.RED_THRESHOLD] ?: 50,
             soundEnabled = p[Keys.SOUND_ENABLED] ?: true,
@@ -104,6 +108,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setScreenMode(value: String) =
         context.dataStore.edit { it[Keys.SCREEN_MODE] = value }
+
+    suspend fun setAppTheme(value: String) =
+        context.dataStore.edit { it[Keys.APP_THEME] = value }
 
     suspend fun setRiderStyle(value: String) =
         context.dataStore.edit { it[Keys.RIDER_STYLE] = value }

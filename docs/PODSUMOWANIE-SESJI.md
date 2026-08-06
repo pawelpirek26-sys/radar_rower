@@ -244,3 +244,12 @@ kółka, chorągiewka). Zapamiętany styl "moto" spada na domyślny gravel.
 - Ikona: wygenerowane PNG (Pillow) we wszystkich gęstościach mdpi–xxxhdpi +
   ic_launcher_round + roundIcon w manifeście + adaptive round — ikona widoczna
   wszędzie, w tym na liście aplikacji w ustawieniach systemu.
+
+## Aktualizacja 2026-08-06 — motyw w apce + widoczność roweru (v0.9.3)
+
+- Ustawienia → Ekran: „Motyw aplikacji" (Jak system / Jasny / Ciemny) —
+  LocalDarkMode w RadarRowerTheme, działa natychmiast (bez restartu), ikony
+  pasków systemowych przełączane WindowInsetsControllerCompat. Wcześniej motyw
+  szedł WYŁĄCZNIE za systemem — stąd „nie działał" w demo.
+- Rower na ciemnym: koła/detale rysowały się prawie czarnym carWheel na ciemnej
+  jezdni — teraz jasny roadLine (jezdnia ciemna w obu motywach = kontrast zawsze).

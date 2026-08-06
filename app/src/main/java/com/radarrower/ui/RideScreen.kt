@@ -299,7 +299,8 @@ private fun RoadStrip(
 
         // rowerzysta u góry, na prawym pasie — sylwetka boczna wg wyboru usera
         val riderX = size.width / 2f + roadWidth / 4f
-        drawSideBike(riderX, riderY, riderStyle, palette.rider, palette.carWheel)
+        // koła/detale roweru jasne — jezdnia jest ciemna w obu motywach
+        drawSideBike(riderX, riderY, riderStyle, palette.rider, palette.roadLine)
         drawContext.canvas.nativeCanvas.drawText("TY", riderX - 24f, riderY + 92f, speedPaint)
 
         // auta doganiają: dystans 0 = tuż za rowerzystą (góra), MAX = dół pasa

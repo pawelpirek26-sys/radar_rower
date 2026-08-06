@@ -1,11 +1,17 @@
 package com.radarrower.ui
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /**
  * Paleta pasa drogi — osobna dla trybu ciemnego i jasnego.
@@ -62,8 +68,11 @@ private val LightRoad = RoadPalette(
     carWheel = Color(0xFF101317),
 )
 
+/** Czy UI jest w trybie ciemnym — ustawiane przez [RadarRowerTheme]. */
+val LocalDarkMode = compositionLocalOf { true }
+
 @Composable
-fun roadPalette(): RoadPalette = if (isSystemInDarkTheme()) DarkRoad else LightRoad
+fun roadPalette(): RoadPalette = if (LocalDarkMode.current) DarkRoad else LightRoad
 
 private val DarkScheme = darkColorScheme(
     primary = Color(0xFF7BD88F),
@@ -79,10 +88,35 @@ private val LightScheme = lightColorScheme(
     surface = Color(0xFFFFFFFF),
 )
 
+/**
+ * Motyw aplikacji. [themeMode]: "system" (za systemem) | "light" | "dark" —
+ * wybierany w Ustawieniach, działa natychmiast bez restartu.
+ */
 @Composable
-fun RadarRowerTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) DarkScheme else LightScheme,
-        content = content,
-    )
+fun RadarRowerTheme(themeMode: String = "system", content: @Composable () -> Unit) {
+    val dark = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    }
+
+    // kolory ikon pasków systemowych muszą iść za wymuszonym motywem
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            (view.context as? Activity)?.window?.let { window ->
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !dark
+                    isAppearanceLightNavigationBars = !dark
+                }
+            }
+        }
+    }
+
+    CompositionLocalProvider(LocalDarkMode provides dark) {
+        MaterialTheme(
+            colorScheme = if (dark) DarkScheme else LightScheme,
+            content = content,
+        )
+    }
 }

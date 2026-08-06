@@ -50,6 +50,7 @@ fun SettingsScreen(
     batteryOptimized: Boolean,
     demoMode: Boolean,
     onScreenMode: (String) -> Unit,
+    onAppTheme: (String) -> Unit,
     onRiderStyle: (String) -> Unit,
     onRedThreshold: (Int) -> Unit,
     onSoundEnabled: (Boolean) -> Unit,
@@ -215,6 +216,13 @@ fun SettingsScreen(
             },
             fontSize = 13.sp,
             modifier = Modifier.padding(top = 6.dp),
+        )
+
+        Text("Motyw aplikacji:", fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp))
+        ChipRow(
+            options = listOf("system" to "Jak system", "light" to "Jasny", "dark" to "Ciemny"),
+            selected = settings.appTheme,
+            onSelect = onAppTheme,
         )
 
         // ------------------------------------------------ ROWER
