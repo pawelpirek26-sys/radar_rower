@@ -77,6 +77,7 @@ private val CAR_COLORS = listOf(
 @Composable
 fun RideScreen(
     redThresholdKmh: Int,
+    riderStyle: String,
     standbyEnabled: Boolean,
     onToggleStandby: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -218,6 +219,7 @@ fun RideScreen(
                     targets = targets,
                     palette = palette,
                     redThresholdKmh = redThresholdKmh,
+                    riderStyle = riderStyle,
                     modifier = Modifier.fillMaxSize().padding(bottom = 12.dp),
                 )
             }
@@ -252,6 +254,7 @@ private fun RoadStrip(
     targets: List<RadarTarget>,
     palette: RoadPalette,
     redThresholdKmh: Int,
+    riderStyle: String,
     modifier: Modifier = Modifier,
 ) {
     val textPaint = android.graphics.Paint().apply {
@@ -293,10 +296,10 @@ private fun RoadStrip(
             y += dashH
         }
 
-        // rowerzysta (pixel-art rower z góry) u góry, na prawym pasie
+        // rowerzysta u góry, na prawym pasie — sylwetka boczna wg wyboru usera
         val riderX = size.width / 2f + roadWidth / 4f
-        drawPixelBike(riderX, riderY, palette.rider, palette.carWheel)
-        drawContext.canvas.nativeCanvas.drawText("TY", riderX - 24f, riderY + 104f, speedPaint)
+        drawSideBike(riderX, riderY, riderStyle, palette.rider, palette.carWheel)
+        drawContext.canvas.nativeCanvas.drawText("TY", riderX - 24f, riderY + 92f, speedPaint)
 
         // auta doganiają: dystans 0 = tuż za rowerzystą (góra), MAX = dół pasa
         val laneX = size.width / 2f - roadWidth / 4f
@@ -357,18 +360,107 @@ private fun DrawScope.drawPixelCar(
     drawRect(body.copy(alpha = 0.7f), Offset(left + 8f, top + 8f), Size(w - 16f, 10f))
 }
 
-/** Pikselowy rowerzysta z góry: koła w linii, rama, kierownica, plecy i kask. */
-private fun DrawScope.drawPixelBike(cx: Float, cy: Float, frame: Color, wheel: Color) {
-    // koła (przód u góry — kierunek jazdy w górę ekranu)
-    drawRoundRect(wheel, Offset(cx - 7f, cy - 62f), Size(14f, 36f), CornerRadius(6f, 6f))
-    drawRoundRect(wheel, Offset(cx - 7f, cy + 26f), Size(14f, 40f), CornerRadius(6f, 6f))
-    // rama
-    drawRect(frame, Offset(cx - 5f, cy - 34f), Size(10f, 64f))
-    // kierownica
-    drawRoundRect(frame, Offset(cx - 32f, cy - 40f), Size(64f, 12f), CornerRadius(5f, 5f))
-    // plecy rowerzysty
-    drawRoundRect(frame, Offset(cx - 24f, cy - 12f), Size(48f, 36f), CornerRadius(14f, 14f))
-    // kask
-    drawCircle(Color.White, 14f, Offset(cx, cy - 2f))
-    drawCircle(frame, 14f, Offset(cx, cy - 2f), style = Stroke(width = 4f))
+/** Sylwetka boczna pojazdu rowerzysty — styl wybierany w Ustawieniach. */
+private fun DrawScope.drawSideBike(
+    cx: Float,
+    cy: Float,
+    style: String,
+    frame: Color,
+    wheel: Color,
+) {
+    when (style) {
+        "kids" -> drawKidsBike(cx, cy, frame, wheel)
+        "moto" -> drawMotorbike(cx, cy, frame, wheel)
+        "road" -> drawSportBike(cx, cy, frame, wheel, tire = 5f)
+        else -> drawSportBike(cx, cy, frame, wheel, tire = 9f) // gravel: grubsze opony
+    }
+}
+
+/** Rower sportowy z boku (gravel/szosa różnią się grubością opon). */
+private fun DrawScope.drawSportBike(
+    cx: Float,
+    cy: Float,
+    frame: Color,
+    wheel: Color,
+    tire: Float,
+) {
+    val r = 30f
+    val rear = Offset(cx - 48f, cy + 14f)
+    val front = Offset(cx + 48f, cy + 14f)
+    drawCircle(wheel, r, rear, style = Stroke(tire))
+    drawCircle(wheel, r, front, style = Stroke(tire))
+    drawCircle(frame, 5f, rear)
+    drawCircle(frame, 5f, front)
+
+    val bb = Offset(cx - 2f, cy + 20f)     // suport
+    val seat = Offset(cx - 28f, cy - 26f)  // góra sztycy
+    val head = Offset(cx + 36f, cy - 22f)  // główka ramy
+    val lw = 8f
+    drawLine(frame, rear, bb, lw)          // dolne widełki
+    drawLine(frame, bb, seat, lw)          // rura podsiodłowa
+    drawLine(frame, seat, rear, lw)        // górne widełki
+    drawLine(frame, seat, head, lw)        // górna rura
+    drawLine(frame, head, bb, lw)          // dolna rura
+    drawLine(frame, head, front, lw)       // widelec
+    // siodełko
+    drawRoundRect(frame, Offset(seat.x - 15f, seat.y - 9f), Size(30f, 9f), CornerRadius(4f, 4f))
+    // baranek
+    drawLine(frame, head, Offset(head.x + 4f, head.y - 16f), lw)
+    drawRoundRect(frame, Offset(head.x + 2f, head.y - 20f), Size(20f, 8f), CornerRadius(4f, 4f))
+    drawLine(frame, Offset(head.x + 19f, head.y - 14f), Offset(head.x + 19f, head.y + 2f), 6f)
+}
+
+/** Rowerek dziecinny: małe koła, boczne kółka, wysoka kierownica, chorągiewka. */
+private fun DrawScope.drawKidsBike(cx: Float, cy: Float, frame: Color, wheel: Color) {
+    val r = 20f
+    val rear = Offset(cx - 32f, cy + 24f)
+    val front = Offset(cx + 32f, cy + 24f)
+    drawCircle(wheel, r, rear, style = Stroke(8f))
+    drawCircle(wheel, r, front, style = Stroke(8f))
+    // boczne kółko
+    drawCircle(wheel, 9f, Offset(rear.x + 14f, cy + 36f), style = Stroke(5f))
+
+    val bb = Offset(cx, cy + 28f)
+    val seat = Offset(cx - 18f, cy - 8f)
+    val head = Offset(cx + 24f, cy - 10f)
+    val lw = 7f
+    drawLine(frame, rear, bb, lw)
+    drawLine(frame, bb, seat, lw)
+    drawLine(frame, seat, rear, lw)
+    drawLine(frame, seat, head, lw)
+    drawLine(frame, head, bb, lw)
+    drawLine(frame, head, front, lw)
+    // siodełko i wysoka kierownica
+    drawRoundRect(frame, Offset(seat.x - 12f, seat.y - 8f), Size(24f, 8f), CornerRadius(4f, 4f))
+    drawLine(frame, head, Offset(head.x + 2f, head.y - 22f), 6f)
+    drawLine(frame, Offset(head.x - 8f, head.y - 22f), Offset(head.x + 12f, head.y - 22f), 6f)
+    // chorągiewka na wysokim maszcie
+    drawLine(frame, rear, Offset(rear.x - 12f, cy - 46f), 4f)
+    val flag = androidx.compose.ui.graphics.Path().apply {
+        moveTo(rear.x - 12f, cy - 46f)
+        lineTo(rear.x - 40f, cy - 38f)
+        lineTo(rear.x - 12f, cy - 30f)
+        close()
+    }
+    drawPath(flag, Color(0xFFEC407A))
+}
+
+/** Motocykl z boku: grube opony, korpus z bakiem, wydech. */
+private fun DrawScope.drawMotorbike(cx: Float, cy: Float, frame: Color, wheel: Color) {
+    val r = 26f
+    val rear = Offset(cx - 50f, cy + 16f)
+    val front = Offset(cx + 50f, cy + 16f)
+    drawCircle(wheel, r, rear, style = Stroke(12f))
+    drawCircle(wheel, r, front, style = Stroke(12f))
+    // korpus
+    drawRoundRect(frame, Offset(cx - 36f, cy - 12f), Size(74f, 24f), CornerRadius(10f, 10f))
+    // bak
+    drawRoundRect(frame, Offset(cx + 2f, cy - 26f), Size(28f, 16f), CornerRadius(6f, 6f))
+    // siedzenie
+    drawRoundRect(wheel, Offset(cx - 34f, cy - 22f), Size(30f, 10f), CornerRadius(4f, 4f))
+    // widelec + kierownica
+    drawLine(frame, Offset(cx + 34f, cy - 4f), front, 9f)
+    drawLine(frame, Offset(cx + 28f, cy - 30f), Offset(cx + 44f, cy - 14f), 7f)
+    // wydech
+    drawLine(wheel, Offset(cx - 18f, cy + 10f), Offset(cx - 54f, cy + 24f), 7f)
 }

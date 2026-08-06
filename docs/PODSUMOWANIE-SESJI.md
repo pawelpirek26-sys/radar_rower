@@ -183,3 +183,11 @@ doganiają. Lewy pas = wyprzedzanie (ruch prawostronny).
   Czerwony ZAREZERWOWANY dla aut powyżej progu prędkości (sygnał bezpieczeństwa).
 - Trójnik rowerzysty zastąpiony pikselowym rowerem z góry: koła w linii, rama,
   kierownica, plecy i biały kask.
+
+## Aktualizacja 2026-08-06 — rower bokiem z wyborem stylu (v0.8.0)
+
+Rowerzysta u góry pokazywany Z BOKU (jak w innych apkach radarowych), styl
+do wyboru w Ustawieniach → Ekran → „Twój pojazd na ekranie":
+Gravel (domyślny, grubsze opony), Szosa (cienkie opony), Dziecinny (małe koła,
+boczne kółka, wysoka kierownica, różowa chorągiewka), Moto (grube opony,
+korpus z bakiem, wydech). Wszystko rysowane prymitywami Canvas, zero assetów.

@@ -38,6 +38,7 @@ fun SettingsScreen(
     batteryOptimized: Boolean,
     onKeepScreenOn: (Boolean) -> Unit,
     onStandbyEnabled: (Boolean) -> Unit,
+    onRiderStyle: (String) -> Unit,
     onRedThreshold: (Int) -> Unit,
     onSoundEnabled: (Boolean) -> Unit,
     onUseAlarmStream: (Boolean) -> Unit,
@@ -79,6 +80,18 @@ fun SettingsScreen(
                     "i zapala się sam, gdy radar wykryje pojazd. Dotknięcie też budzi.",
                 fontSize = 13.sp,
             )
+        }
+        Text("Twój pojazd na ekranie:", fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
+        Row(modifier = Modifier.padding(top = 4.dp)) {
+            listOf("gravel" to "Gravel", "road" to "Szosa", "kids" to "Dziecinny", "moto" to "Moto")
+                .forEach { (id, label) ->
+                    FilterChip(
+                        selected = settings.riderStyle == id,
+                        onClick = { onRiderStyle(id) },
+                        label = { Text(label) },
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
         }
 
         Section("Alert czerwony")

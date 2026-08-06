@@ -136,6 +136,7 @@ class MainActivity : ComponentActivity() {
                     batteryOptimized = batteryOptimized,
                     onKeepScreenOn = { v -> scope.launch { settingsRepo.setKeepScreenOn(v) } },
                     onStandbyEnabled = { v -> scope.launch { settingsRepo.setStandbyEnabled(v) } },
+                    onRiderStyle = { v -> scope.launch { settingsRepo.setRiderStyle(v) } },
                     onRedThreshold = { v -> scope.launch { settingsRepo.setRedThreshold(v) } },
                     onSoundEnabled = { v -> scope.launch { settingsRepo.setSoundEnabled(v) } },
                     onUseAlarmStream = { v -> scope.launch { settingsRepo.setUseAlarmStream(v) } },
@@ -190,6 +191,7 @@ class MainActivity : ComponentActivity() {
 
             else -> RideScreen(
                 redThresholdKmh = currentSettings.redThresholdKmh,
+                riderStyle = currentSettings.riderStyle,
                 standbyEnabled = currentSettings.standbyEnabled,
                 onToggleStandby = {
                     scope.launch {
