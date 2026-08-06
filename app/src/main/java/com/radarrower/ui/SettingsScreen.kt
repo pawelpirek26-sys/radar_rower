@@ -55,6 +55,7 @@ fun SettingsScreen(
     onForgetDevice: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
     onScanAgain: () -> Unit,
+    onReconnect: () -> Unit,
 ) {
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
     val battery by RadarRepository.batteryLevel.collectAsStateWithLifecycle()
@@ -235,6 +236,12 @@ fun SettingsScreen(
                 ) {
                     Text("Zapomnij urządzenie")
                 }
+            }
+            Button(
+                onClick = onReconnect,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) {
+                Text("Restartuj połączenie")
             }
         }
 

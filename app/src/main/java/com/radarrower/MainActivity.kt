@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -175,6 +176,11 @@ class MainActivity : ComponentActivity() {
                     },
                     onRequestIgnoreBattery = { requestIgnoreBatteryOptimizations() },
                     onScanAgain = { screen = Screen.SCAN },
+                    onReconnect = {
+                        // ACTION_START zeruje backoff i wymusza świeże połączenie
+                        RadarService.start(context)
+                        Toast.makeText(context, "Restartuję połączenie z radarem…", Toast.LENGTH_SHORT).show()
+                    },
                 )
             }
 
@@ -189,18 +195,35 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            else -> RideScreen(
-                redThresholdKmh = currentSettings.redThresholdKmh,
-                riderStyle = currentSettings.riderStyle,
-                standbyEnabled = currentSettings.standbyEnabled,
-                onToggleStandby = {
-                    scope.launch {
-                        settingsRepo.setStandbyEnabled(!currentSettings.standbyEnabled)
+            else -> {
+                // ochrona przed przypadkowym wyjściem: drugie cofnięcie w 2 s zamyka
+                var lastBackMs by remember { mutableStateOf(0L) }
+                androidx.activity.compose.BackHandler {
+                    val now = System.currentTimeMillis()
+                    if (now - lastBackMs < 2_000) {
+                        finish()
+                    } else {
+                        lastBackMs = now
+                        Toast.makeText(
+                            context,
+                            "Naciśnij ponownie, aby wyjść (radar działa dalej w tle)",
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
-                },
-                onOpenSettings = { screen = Screen.SETTINGS },
-                onOpenDebug = { screen = Screen.DEBUG },
-            )
+                }
+                RideScreen(
+                    redThresholdKmh = currentSettings.redThresholdKmh,
+                    riderStyle = currentSettings.riderStyle,
+                    standbyEnabled = currentSettings.standbyEnabled,
+                    onToggleStandby = {
+                        scope.launch {
+                            settingsRepo.setStandbyEnabled(!currentSettings.standbyEnabled)
+                        }
+                    },
+                    onOpenSettings = { screen = Screen.SETTINGS },
+                    onOpenDebug = { screen = Screen.DEBUG },
+                )
+            }
         }
     }
 

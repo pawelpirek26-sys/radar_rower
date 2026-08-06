@@ -198,3 +198,11 @@ Moto usunięte na życzenie usera. Pięć sylwetek rowerów: Gravel (grube opony
 baranek), Szosa (cienkie opony), MTB (płaska kierownica, amortyzowany widelec),
 Miejski (damka: błotniki, cofnięta kierownica, koszyk), Dziecinny (boczne
 kółka, chorągiewka). Zapamiętany styl "moto" spada na domyślny gravel.
+
+## Aktualizacja 2026-08-06 — ochrona przed wyjściem + restart połączenia (v0.8.2)
+
+- Ekran jazdy: cofnięcie nie zamyka apki od razu — toast „Naciśnij ponownie,
+  aby wyjść (radar działa dalej w tle)", drugie cofnięcie w 2 s zamyka.
+- Ustawienia → Urządzenie: przycisk „Restartuj połączenie" — ACTION_START
+  serwisu zeruje backoff, zrywa bieżące połączenie GATT i łączy od świeża
+  (bez zabijania serwisu).

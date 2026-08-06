@@ -108,6 +108,10 @@ class RadarService : Service(), BleRadarClient.Listener {
             else -> {
                 startInForeground()
                 acquireWakeLock()
+                // ponowny ACTION_START (np. „Restartuj połączenie" z Ustawień)
+                // zeruje backoff i zrywa bieżące połączenie na rzecz świeżego
+                reconnectJob?.cancel()
+                reconnectAttempt = 0
                 connectSaved(initial = true)
             }
         }
