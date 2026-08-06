@@ -370,8 +370,9 @@ private fun DrawScope.drawSideBike(
 ) {
     when (style) {
         "kids" -> drawKidsBike(cx, cy, frame, wheel)
-        "moto" -> drawMotorbike(cx, cy, frame, wheel)
         "road" -> drawSportBike(cx, cy, frame, wheel, tire = 5f)
+        "mtb" -> drawMtbBike(cx, cy, frame, wheel)
+        "city" -> drawCityBike(cx, cy, frame, wheel)
         else -> drawSportBike(cx, cy, frame, wheel, tire = 9f) // gravel: grubsze opony
     }
 }
@@ -445,22 +446,76 @@ private fun DrawScope.drawKidsBike(cx: Float, cy: Float, frame: Color, wheel: Co
     drawPath(flag, Color(0xFFEC407A))
 }
 
-/** Motocykl z boku: grube opony, korpus z bakiem, wydech. */
-private fun DrawScope.drawMotorbike(cx: Float, cy: Float, frame: Color, wheel: Color) {
-    val r = 26f
-    val rear = Offset(cx - 50f, cy + 16f)
-    val front = Offset(cx + 50f, cy + 16f)
-    drawCircle(wheel, r, rear, style = Stroke(12f))
-    drawCircle(wheel, r, front, style = Stroke(12f))
-    // korpus
-    drawRoundRect(frame, Offset(cx - 36f, cy - 12f), Size(74f, 24f), CornerRadius(10f, 10f))
-    // bak
-    drawRoundRect(frame, Offset(cx + 2f, cy - 26f), Size(28f, 16f), CornerRadius(6f, 6f))
-    // siedzenie
-    drawRoundRect(wheel, Offset(cx - 34f, cy - 22f), Size(30f, 10f), CornerRadius(4f, 4f))
-    // widelec + kierownica
-    drawLine(frame, Offset(cx + 34f, cy - 4f), front, 9f)
-    drawLine(frame, Offset(cx + 28f, cy - 30f), Offset(cx + 44f, cy - 14f), 7f)
-    // wydech
-    drawLine(wheel, Offset(cx - 18f, cy + 10f), Offset(cx - 54f, cy + 24f), 7f)
+/** MTB: grube opony, płaska kierownica, amortyzowany widelec. */
+private fun DrawScope.drawMtbBike(cx: Float, cy: Float, frame: Color, wheel: Color) {
+    val r = 30f
+    val rear = Offset(cx - 48f, cy + 14f)
+    val front = Offset(cx + 48f, cy + 14f)
+    drawCircle(wheel, r, rear, style = Stroke(11f))
+    drawCircle(wheel, r, front, style = Stroke(11f))
+    drawCircle(frame, 5f, rear)
+    drawCircle(frame, 5f, front)
+
+    val bb = Offset(cx - 2f, cy + 20f)
+    val seat = Offset(cx - 26f, cy - 20f)
+    val head = Offset(cx + 36f, cy - 26f)
+    val lw = 8f
+    drawLine(frame, rear, bb, lw)
+    drawLine(frame, bb, seat, lw)
+    drawLine(frame, seat, rear, lw)
+    drawLine(frame, seat, head, lw)  // sloping top tube
+    drawLine(frame, head, bb, lw)
+    // amortyzowany widelec: gruba golenia z jaśniejszym rdzeniem
+    drawLine(frame, head, front, 12f)
+    drawLine(wheel, Offset(head.x + 3f, head.y + 10f), front, 4f)
+    // siodełko i płaska kierownica
+    drawRoundRect(frame, Offset(seat.x - 14f, seat.y - 9f), Size(28f, 9f), CornerRadius(4f, 4f))
+    drawLine(frame, head, Offset(head.x + 2f, head.y - 14f), lw)
+    drawLine(frame, Offset(head.x - 14f, head.y - 16f), Offset(head.x + 18f, head.y - 16f), 7f)
+}
+
+/** Rower miejski: wyprostowana pozycja, błotniki, cofnięta kierownica, koszyk. */
+private fun DrawScope.drawCityBike(cx: Float, cy: Float, frame: Color, wheel: Color) {
+    val r = 28f
+    val rear = Offset(cx - 46f, cy + 16f)
+    val front = Offset(cx + 46f, cy + 16f)
+    drawCircle(wheel, r, rear, style = Stroke(7f))
+    drawCircle(wheel, r, front, style = Stroke(7f))
+    drawCircle(frame, 5f, rear)
+    drawCircle(frame, 5f, front)
+    // błotniki
+    listOf(rear, front).forEach { c ->
+        drawArc(
+            color = frame,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = Offset(c.x - r - 7f, c.y - r - 7f),
+            size = Size((r + 7f) * 2f, (r + 7f) * 2f),
+            style = Stroke(5f),
+        )
+    }
+
+    val bb = Offset(cx - 4f, cy + 22f)
+    val seat = Offset(cx - 26f, cy - 30f)
+    val head = Offset(cx + 32f, cy - 26f)
+    val lw = 7f
+    drawLine(frame, rear, bb, lw)
+    drawLine(frame, bb, seat, lw)
+    drawLine(frame, seat, rear, lw)
+    // rama damka: wygięta dolna rura zamiast górnej
+    drawLine(frame, head, Offset(cx - 12f, cy + 10f), lw)
+    drawLine(frame, Offset(cx - 12f, cy + 10f), bb, lw)
+    drawLine(frame, head, front, lw)
+    // szerokie siodełko, cofnięta kierownica, koszyk
+    drawRoundRect(frame, Offset(seat.x - 17f, seat.y - 10f), Size(34f, 10f), CornerRadius(5f, 5f))
+    drawLine(frame, head, Offset(head.x, head.y - 20f), 6f)
+    drawLine(frame, Offset(head.x, head.y - 20f), Offset(head.x - 18f, head.y - 26f), 6f)
+    drawRoundRect(
+        wheel,
+        Offset(front.x - 10f, head.y - 14f),
+        Size(26f, 20f),
+        CornerRadius(4f, 4f),
+        style = Stroke(5f),
+    )
 }

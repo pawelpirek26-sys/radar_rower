@@ -81,9 +81,20 @@ fun SettingsScreen(
                 fontSize = 13.sp,
             )
         }
-        Text("Twój pojazd na ekranie:", fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
+        Text("Twój rower na ekranie:", fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
         Row(modifier = Modifier.padding(top = 4.dp)) {
-            listOf("gravel" to "Gravel", "road" to "Szosa", "kids" to "Dziecinny", "moto" to "Moto")
+            listOf("gravel" to "Gravel", "road" to "Szosa", "mtb" to "MTB")
+                .forEach { (id, label) ->
+                    FilterChip(
+                        selected = settings.riderStyle == id,
+                        onClick = { onRiderStyle(id) },
+                        label = { Text(label) },
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
+        }
+        Row {
+            listOf("city" to "Miejski", "kids" to "Dziecinny")
                 .forEach { (id, label) ->
                     FilterChip(
                         selected = settings.riderStyle == id,

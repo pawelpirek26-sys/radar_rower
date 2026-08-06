@@ -191,3 +191,10 @@ do wyboru w Ustawieniach → Ekran → „Twój pojazd na ekranie":
 Gravel (domyślny, grubsze opony), Szosa (cienkie opony), Dziecinny (małe koła,
 boczne kółka, wysoka kierownica, różowa chorągiewka), Moto (grube opony,
 korpus z bakiem, wydech). Wszystko rysowane prymitywami Canvas, zero assetów.
+
+## Aktualizacja 2026-08-06 — 5 rowerów, bez moto (v0.8.1)
+
+Moto usunięte na życzenie usera. Pięć sylwetek rowerów: Gravel (grube opony,
+baranek), Szosa (cienkie opony), MTB (płaska kierownica, amortyzowany widelec),
+Miejski (damka: błotniki, cofnięta kierownica, koszyk), Dziecinny (boczne
+kółka, chorągiewka). Zapamiętany styl "moto" spada na domyślny gravel.
