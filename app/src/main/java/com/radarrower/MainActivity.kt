@@ -47,6 +47,7 @@ import androidx.lifecycle.lifecycleScope
 import com.radarrower.core.AlertEvent
 import com.radarrower.core.AlertPlayer
 import com.radarrower.core.DemoSimulator
+import com.radarrower.core.Permissions
 import com.radarrower.data.SettingsRepository
 import com.radarrower.service.RadarService
 import com.radarrower.ui.DebugScreen
@@ -259,12 +260,19 @@ class MainActivity : ComponentActivity() {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(vertical = 16.dp),
             )
+            // status per uprawnienie — widać, co system faktycznie przyznał
+            val nearbyOk = Permissions.hasNearby(this@MainActivity)
+            val notifOk = Permissions.hasNotifications(this@MainActivity)
             OnboardingStep(
                 done = permissionsGranted,
-                title = "1. Uprawnienia Bluetooth i powiadomień",
-                description = "Skanowanie i łączenie z radarem oraz stały status połączenia.",
+                title = "1. Uprawnienia",
+                description = (if (nearbyOk) "✓" else "✗") +
+                    " Urządzenia w pobliżu — skanowanie i łączenie z radarem\n" +
+                    (if (notifOk) "✓" else "✗") +
+                    " Powiadomienia — stały status połączenia\n" +
+                    "System zapyta o zgodę po naciśnięciu przycisku.",
                 buttonLabel = "Przyznaj uprawnienia",
-                onClick = { launcher.launch(requiredPermissions()) },
+                onClick = { launcher.launch(Permissions.required()) },
             )
             OnboardingStep(
                 done = !batteryOptimized,
@@ -334,24 +342,7 @@ class MainActivity : ComponentActivity() {
 
     // --- uprawnienia / bateria ---
 
-    private fun requiredPermissions(): Array<String> {
-        val perms = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= 31) {
-            perms += Manifest.permission.BLUETOOTH_SCAN
-            perms += Manifest.permission.BLUETOOTH_CONNECT
-        } else {
-            perms += Manifest.permission.ACCESS_FINE_LOCATION
-        }
-        if (Build.VERSION.SDK_INT >= 33) {
-            perms += Manifest.permission.POST_NOTIFICATIONS
-        }
-        return perms.toTypedArray()
-    }
-
-    private fun hasAllPermissions(): Boolean =
-        requiredPermissions().all {
-            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
-        }
+    private fun hasAllPermissions(): Boolean = Permissions.hasAll(this)
 
     private fun isBatteryOptimized(): Boolean {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager

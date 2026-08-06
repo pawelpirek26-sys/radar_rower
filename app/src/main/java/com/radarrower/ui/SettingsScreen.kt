@@ -1,5 +1,7 @@
 package com.radarrower.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,16 +20,24 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.radarrower.ble.RadarScanner
 import com.radarrower.core.ConnectionState
+import com.radarrower.core.Permissions
 import com.radarrower.core.RadarRepository
 import com.radarrower.data.AppSettings
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Ustawienia — sekcje w kolejności „od radaru do ciekawostek":
@@ -115,6 +125,66 @@ fun SettingsScreen(
                     Text("Zapomnij")
                 }
             }
+        }
+
+        // ------------------------------------------------ UPRAWNIENIA
+        Section("Uprawnienia")
+        val context = LocalContext.current
+        val nearbyOk = Permissions.hasNearby(context)
+        val notifOk = Permissions.hasNotifications(context)
+        Text(
+            (if (nearbyOk) "✓" else "✗") + " Urządzenia w pobliżu (Bluetooth)",
+            fontSize = 15.sp,
+            color = if (nearbyOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+        )
+        Text(
+            (if (notifOk) "✓" else "✗") + " Powiadomienia",
+            fontSize = 15.sp,
+            color = if (notifOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        if (!nearbyOk || !notifOk) {
+            val launcher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { }
+            Button(
+                onClick = { launcher.launch(Permissions.required()) },
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                Text("Przyznaj brakujące")
+            }
+        }
+        // realny test: czy skan BLE faktycznie startuje i coś widzi
+        var scanTestResult by remember { mutableStateOf<String?>(null) }
+        var scanTestRunning by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
+        OutlinedButton(
+            onClick = {
+                if (scanTestRunning) return@OutlinedButton
+                scanTestRunning = true
+                scanTestResult = "Skanuję przez 5 sekund…"
+                scope.launch {
+                    val found = mutableSetOf<String>()
+                    val scanner = RadarScanner(context)
+                    val started = scanner.start(allDevices = true) { found += it.mac }
+                    if (!started) {
+                        scanTestResult = "Skan NIE wystartował — sprawdź, czy Bluetooth jest " +
+                            "włączony i czy przyznano „Urządzenia w pobliżu”."
+                    } else {
+                        delay(5_000)
+                        scanner.stop()
+                        scanTestResult = "Skanowanie działa ✓ — widzę ${found.size} " +
+                            "urządzeń BLE w pobliżu."
+                    }
+                    scanTestRunning = false
+                }
+            },
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
+            Text(if (scanTestRunning) "Test w toku…" else "Test wyszukiwania (5 s)")
+        }
+        scanTestResult?.let {
+            Text(it, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
         }
 
         // ------------------------------------------------ EKRAN

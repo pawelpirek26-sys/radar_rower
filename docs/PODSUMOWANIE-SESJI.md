@@ -221,3 +221,13 @@ kółka, chorągiewka). Zapamiętany styl "moto" spada na domyślny gravel.
 - „Rowery się nie zmieniają": różnice były za subtelne (grubość opon).
   Teraz: gravel = gruba opona z drobnym bieżnikiem (dash), MTB = bardzo gruby
   bieżnik terenowy, szosa = cienka gładka; do tego różna geometria/kierownice.
+
+## Aktualizacja 2026-08-06 — diagnostyka uprawnień + test skanu (v0.9.1)
+
+- Wspólny helper core/Permissions (required/hasNearby/hasNotifications/hasAll).
+- Onboarding krok 1 pokazuje status per uprawnienie: ✓/✗ „Urządzenia w pobliżu"
+  i ✓/✗ „Powiadomienia" + informację, że system zapyta o zgodę po przycisku.
+- Ustawienia → nowa sekcja „Uprawnienia": statusy ✓/✗ obu uprawnień, przycisk
+  „Przyznaj brakujące" oraz „Test wyszukiwania (5 s)" — realny 5-sekundowy skan
+  BLE raportujący liczbę widzianych urządzeń (dowód, że uprawnienie DZIAŁA,
+  a nie tylko figuruje jako przyznane).
