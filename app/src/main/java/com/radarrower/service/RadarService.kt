@@ -153,6 +153,27 @@ class RadarService : Service(), BleRadarClient.Listener {
         RadarRepository.setBatteryLevel(levelPercent)
     }
 
+    override fun onSniffStart(discoveredServices: List<String>, characteristicCount: Int) {
+        if (stopping) return
+        reconnectAttempt = 0
+        incompatibleCount = 0
+        RadarRepository.logDiagnostic(
+            "DIAG: brak serwisu Varia — TRYB NASŁUCHU ($characteristicCount charakterystyk). " +
+                "Usługi: " + discoveredServices.joinToString("; ")
+        )
+        scope.launch {
+            val name = SettingsRepository.get(this@RadarService).current().deviceName
+            RadarRepository.setConnectionState(
+                ConnectionState.CONNECTED,
+                (name ?: "Radar") + " · nasłuch",
+            )
+        }
+    }
+
+    override fun onSniffPacket(charUuid: String, data: ByteArray) {
+        RadarRepository.logSniffPacket(charUuid, data)
+    }
+
     override fun onIncompatible(discoveredServices: List<String>) {
         if (stopping) return
         // diagnostyka do ekranu Debug: co urządzenie NAPRAWDĘ wystawia

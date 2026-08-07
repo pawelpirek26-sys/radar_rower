@@ -36,11 +36,21 @@ class BleRadarClient(
         fun onBattery(levelPercent: Int)
 
         /**
-         * Urządzenie po połączeniu NIE ma serwisu radarowego.
-         * [discoveredServices] — UUID-y usług, które faktycznie zgłosiło
-         * (do diagnostyki na ekranie Debug).
+         * Urządzenie po połączeniu NIE ma serwisu radarowego ANI żadnych
+         * charakterystyk notyfikujących — nie ma czego słuchać.
+         * [discoveredServices] — UUID-y usług, które faktycznie zgłosiło.
          */
         fun onIncompatible(discoveredServices: List<String>)
+
+        /**
+         * Tryb nasłuchu: brak serwisu Varia, ale urządzenie ma charakterystyki
+         * notyfikujące — subskrybujemy wszystkie i zrzucamy pakiety do logu,
+         * żeby odczytać niestandardowy protokół (klony typu W100/TUTULOO).
+         */
+        fun onSniffStart(discoveredServices: List<String>, characteristicCount: Int)
+
+        /** Pakiet z nasłuchu — [charUuid] mówi, z której charakterystyki. */
+        fun onSniffPacket(charUuid: String, data: ByteArray)
     }
 
     companion object {
@@ -66,6 +76,10 @@ class BleRadarClient(
     @Volatile
     private var closed = false
 
+    @Volatile
+    private var sniffing = false
+    private val sniffQueue = ArrayDeque<BluetoothGattCharacteristic>()
+
     /**
      * @param autoConnect false = szybka próba bezpośrednia (wymaga aktywnego
      *   advertisingu); true = tryb cierpliwy — stos czeka, aż urządzenie będzie
@@ -87,6 +101,8 @@ class BleRadarClient(
 
     fun disconnect() {
         closed = true
+        sniffing = false
+        sniffQueue.clear()
         runCatching {
             gatt?.disconnect()
             gatt?.close()
@@ -108,6 +124,47 @@ class BleRadarClient(
     @Suppress("PrivateApi")
     private fun refreshGattCache(g: BluetoothGatt) {
         runCatching { g.javaClass.getMethod("refresh").invoke(g) }
+    }
+
+    /**
+     * Włącza notyfikacje kolejnej charakterystyki z kolejki nasłuchu.
+     * @return true = wysłano zapis CCCD (czekamy na onDescriptorWrite);
+     *         false = kolejka pusta.
+     */
+    private fun enableNextSniff(g: BluetoothGatt): Boolean {
+        while (true) {
+            val ch = sniffQueue.removeFirstOrNull() ?: return false
+            runCatching { g.setCharacteristicNotification(ch, true) }
+            val descriptor = ch.getDescriptor(CCCD_UUID) ?: continue
+            val value =
+                if (ch.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
+                    BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                } else {
+                    BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                }
+            val started = if (Build.VERSION.SDK_INT >= 33) {
+                runCatching {
+                    g.writeDescriptor(descriptor, value) ==
+                        android.bluetooth.BluetoothStatusCodes.SUCCESS
+                }.getOrDefault(false)
+            } else {
+                @Suppress("DEPRECATION")
+                descriptor.value = value
+                @Suppress("DEPRECATION")
+                runCatching { g.writeDescriptor(descriptor) }.getOrDefault(false)
+            }
+            if (started) return true
+        }
+    }
+
+    /** Skrócony zapis UUID: „2a19" dla standardowych, pierwsze 8 znaków dla własnych. */
+    private fun shortUuid(uuid: UUID): String {
+        val s = uuid.toString()
+        return if (s.startsWith("0000") && s.endsWith("-0000-1000-8000-00805f9b34fb")) {
+            s.substring(4, 8)
+        } else {
+            s.take(8)
+        }
     }
 
     private val callback = object : BluetoothGattCallback() {
@@ -146,10 +203,26 @@ class BleRadarClient(
             if (characteristic == null) {
                 val discovered = g.services.map { it.uuid.toString() }
                 Log.w(TAG, "Brak serwisu radarowego; urządzenie zgłasza: $discovered")
-                closed = true
-                runCatching { g.disconnect(); g.close() }
-                gatt = null
-                listener.onIncompatible(discovered)
+                // fallback: nasłuch wszystkich charakterystyk notyfikujących —
+                // klon z własnym protokołem i tak gdzieś nadaje dane radarowe
+                val notifyChars = g.services.flatMap { it.characteristics }.filter {
+                    it.properties and (
+                        BluetoothGattCharacteristic.PROPERTY_NOTIFY or
+                            BluetoothGattCharacteristic.PROPERTY_INDICATE
+                        ) != 0
+                }
+                if (notifyChars.isEmpty()) {
+                    closed = true
+                    runCatching { g.disconnect(); g.close() }
+                    gatt = null
+                    listener.onIncompatible(discovered)
+                } else {
+                    sniffing = true
+                    sniffQueue.clear()
+                    sniffQueue.addAll(notifyChars)
+                    listener.onSniffStart(discovered, notifyChars.size)
+                    if (!enableNextSniff(g)) readBattery(g)
+                }
                 return
             }
             enableNotifications(g, characteristic)
@@ -172,10 +245,16 @@ class BleRadarClient(
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
-            if (d.uuid == CCCD_UUID && status == BluetoothGatt.GATT_SUCCESS) {
+            if (d.uuid != CCCD_UUID) return
+            if (sniffing) {
+                // niezależnie od statusu lecimy dalej po kolejce (operacje sekwencyjnie)
+                if (!enableNextSniff(g)) readBattery(g)
+                return
+            }
+            if (status == BluetoothGatt.GATT_SUCCESS) {
                 listener.onConnected(runCatching { g.device.name }.getOrNull())
                 readBattery(g) // dopiero po CCCD — operacje GATT muszą iść sekwencyjnie
-            } else if (d.uuid == CCCD_UUID) {
+            } else {
                 Log.w(TAG, "CCCD write failed: $status")
                 g.disconnect()
             }
@@ -216,7 +295,7 @@ class BleRadarClient(
             ch: BluetoothGattCharacteristic,
             value: ByteArray,
         ) {
-            if (ch.uuid == RADAR_DATA_UUID) listener.onPacket(value)
+            handleNotification(ch, value)
         }
 
         // API < 33: stary callback (na 33+ system woła nowy wariant)
@@ -225,7 +304,14 @@ class BleRadarClient(
             if (Build.VERSION.SDK_INT >= 33) return
             @Suppress("DEPRECATION")
             val value = ch.value ?: return
-            if (ch.uuid == RADAR_DATA_UUID) listener.onPacket(value)
+            handleNotification(ch, value)
+        }
+
+        private fun handleNotification(ch: BluetoothGattCharacteristic, value: ByteArray) {
+            when {
+                sniffing -> listener.onSniffPacket(shortUuid(ch.uuid), value)
+                ch.uuid == RADAR_DATA_UUID -> listener.onPacket(value)
+            }
         }
     }
 }

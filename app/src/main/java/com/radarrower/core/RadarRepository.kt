@@ -112,6 +112,17 @@ object RadarRepository {
         _debugLog.value = (_debugLog.value + entry).takeLast(MAX_DEBUG_PACKETS)
     }
 
+    /** Pakiet z trybu nasłuchu — hex z etykietą charakterystyki źródłowej. */
+    fun logSniffPacket(charUuid: String, data: ByteArray) {
+        if (_debugPaused.value) return
+        val entry = RawPacket(
+            System.currentTimeMillis(),
+            "[$charUuid] " + VariaParser.toHex(data),
+            null,
+        )
+        _debugLog.value = (_debugLog.value + entry).takeLast(MAX_DEBUG_PACKETS)
+    }
+
     /** Wywoływane przez klienta BLE dla każdej notyfikacji charakterystyki radarowej. */
     fun onRadarPacket(data: ByteArray) {
         val now = System.currentTimeMillis()

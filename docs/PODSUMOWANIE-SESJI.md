@@ -292,3 +292,14 @@ Licznik wyłączony, wciąż „brak serwisu radaru". Trzy nowe mechanizmy:
 3. Adres 40:… = resolvable private address (może rotować) — po 3 nieudanych
    próbach serwis skanuje po starym MAC LUB dokładnej nazwie (celowo nie po
    samym serwisie — w peletonie złapałby cudzy radar) i aktualizuje MAC.
+
+## Aktualizacja 2026-08-07 — TRYB NASŁUCHU protokołu W100 (v0.9.7)
+
+Test znikającego urządzenia potwierdził: „Radar67B2" (-31 dBm blisko) TO JEST
+W100 (TUTULOO/MMWR), a mimo czystych danych apki nie wystawia serwisu Varia —
+klon mówi WŁASNYM protokołem BLE (licznik GEOID działa zapewne po ANT+).
+Nowy fallback: gdy serwisu Varia brak, apka subskrybuje WSZYSTKIE
+charakterystyki notify/indicate urządzenia (sekwencyjna kolejka CCCD)
+i zrzuca każdy pakiet do logu Debug jako „[uuid] hex". Stan pokazuje
+„<nazwa> · nasłuch". Plan: user zbiera log z przejazdu auta → z hexów
+odtwarzamy format W100 → parser dostaje drugi dialekt.
