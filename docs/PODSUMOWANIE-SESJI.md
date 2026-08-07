@@ -303,3 +303,14 @@ charakterystyki notify/indicate urządzenia (sekwencyjna kolejka CCCD)
 i zrzuca każdy pakiet do logu Debug jako „[uuid] hex". Stan pokazuje
 „<nazwa> · nasłuch". Plan: user zbiera log z przejazdu auta → z hexów
 odtwarzamy format W100 → parser dostaje drugi dialekt.
+
+## Aktualizacja 2026-08-07 — pierwszy zrzut protokołu W100! (v0.9.8)
+
+NASŁUCH DZIAŁA. W100 nadaje z własnej charakterystyki aa86ffe2-… co ~120-250 ms
+ramki 8 B. Ramka spoczynkowa (brak pojazdów): 30 00 55 41 10 04 00 00.
+Hipoteza robocza: b0=0x30 nagłówek, b1=liczba pojazdów (0), 55 41 10 04
+status/wersja, 00 00 pole celów. Bateria czyta się ze standardowego 0x180F
+(100% — czyli 0x55/0x41 to nie bateria). CZEKAMY na ramki z przejazdu auta.
+v0.9.8: identyczne kolejne ramki zwijane do wpisu z licznikiem (×N) — ramki
+spoczynkowe nie wypychają ciekawych; bufor Debug 300→1000; na ekranie jazdy
+ostrzeżenie „tryb nasłuchu — alerty NIEAKTYWNE".

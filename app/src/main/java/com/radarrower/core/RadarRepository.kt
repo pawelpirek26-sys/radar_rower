@@ -47,7 +47,7 @@ data class RawPacket(
  */
 object RadarRepository {
 
-    const val MAX_DEBUG_PACKETS = 300
+    const val MAX_DEBUG_PACKETS = 1000
 
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState = _connectionState.asStateFlow()
@@ -112,14 +112,30 @@ object RadarRepository {
         _debugLog.value = (_debugLog.value + entry).takeLast(MAX_DEBUG_PACKETS)
     }
 
-    /** Pakiet z trybu nasłuchu — hex z etykietą charakterystyki źródłowej. */
+    private var lastSniffKey: String? = null
+    private var lastSniffRepeat = 0
+
+    /**
+     * Pakiet z trybu nasłuchu — hex z etykietą charakterystyki źródłowej.
+     * Identyczne kolejne ramki zwijane do jednego wpisu z licznikiem (×N),
+     * żeby ramki spoczynkowe nie wypychały z bufora tych z pojazdami.
+     */
     fun logSniffPacket(charUuid: String, data: ByteArray) {
         if (_debugPaused.value) return
-        val entry = RawPacket(
-            System.currentTimeMillis(),
-            "[$charUuid] " + VariaParser.toHex(data),
-            null,
-        )
+        val hex = VariaParser.toHex(data)
+        val key = "$charUuid|$hex"
+        if (key == lastSniffKey) {
+            lastSniffRepeat++
+            val log = _debugLog.value
+            if (log.isNotEmpty()) {
+                val updated = log.last().copy(hex = "[$charUuid] $hex  (×${lastSniffRepeat + 1})")
+                _debugLog.value = log.dropLast(1) + updated
+            }
+            return
+        }
+        lastSniffKey = key
+        lastSniffRepeat = 0
+        val entry = RawPacket(System.currentTimeMillis(), "[$charUuid] $hex", null)
         _debugLog.value = (_debugLog.value + entry).takeLast(MAX_DEBUG_PACKETS)
     }
 

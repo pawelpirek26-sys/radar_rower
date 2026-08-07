@@ -89,6 +89,7 @@ fun RideScreen(
     val threat by RadarRepository.threatLevel.collectAsStateWithLifecycle()
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
     val battery by RadarRepository.batteryLevel.collectAsStateWithLifecycle()
+    val deviceName by RadarRepository.deviceName.collectAsStateWithLifecycle()
 
     val connected = connection == ConnectionState.CONNECTED
     val bgColor by animateColorAsState(
@@ -163,6 +164,15 @@ fun RideScreen(
                 IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Filled.Settings, contentDescription = "Ustawienia", tint = palette.textSecondary)
                 }
+            }
+
+            if (connected && deviceName?.contains("nasłuch") == true) {
+                Text(
+                    "⚠ Tryb nasłuchu protokołu — alerty NIEAKTYWNE, trwa rozpoznawanie formatu",
+                    color = palette.vehicleAccent,
+                    fontSize = 13.sp,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                )
             }
 
             if (connected) {
