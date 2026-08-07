@@ -269,3 +269,12 @@ User próbował sparować realny W100 („Radar67B2", rozpoznany po nazwie,
    telefon (po ANT+ nie przeszkadza). Do testów: rozłączyć licznik.
    Dodatkowo -94 dBm = skrajnie słaby sygnał; parować blisko telefonu.
    Wskazówki wpisane w ekran INCOMPATIBLE.
+
+## Aktualizacja 2026-08-07 — równoległa praca z licznikiem (v0.9.5)
+
+User potwierdził (foto licznika GEOID z polem „Radar"): W100 obsługuje
+RÓWNOCZEŚNIE licznik i telefon — oryginalna apka tak działa, RadarRower też ma.
+Fix: connect(mac, autoConnect) — od 2. próby reconnect tryb cierpliwy
+(autoConnect=true), bo radar zajęty drugim centralem rozgłasza się rzadko
+i szybka próba bezpośrednia się timeoutowała. Rada „rozłącz licznik" z 0.9.4
+wycofana — niepotrzebna po fixie GATT.

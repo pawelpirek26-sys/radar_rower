@@ -62,14 +62,22 @@ class BleRadarClient(
     @Volatile
     private var closed = false
 
-    fun connect(mac: String): Boolean {
+    /**
+     * @param autoConnect false = szybka próba bezpośrednia (wymaga aktywnego
+     *   advertisingu); true = tryb cierpliwy — stos czeka, aż urządzenie będzie
+     *   osiągalne. Ważne przy radarze obsługującym RÓWNOLEGLE licznik i telefon:
+     *   zajęty drugim centralem potrafi rozgłaszać się rzadko.
+     */
+    fun connect(mac: String, autoConnect: Boolean = false): Boolean {
         val adapter: BluetoothAdapter =
             (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
                 ?: return false
         if (!adapter.isEnabled) return false
         closed = false
         val device = runCatching { adapter.getRemoteDevice(mac) }.getOrNull() ?: return false
-        gatt = device.connectGatt(context, false, callback, android.bluetooth.BluetoothDevice.TRANSPORT_LE)
+        gatt = device.connectGatt(
+            context, autoConnect, callback, android.bluetooth.BluetoothDevice.TRANSPORT_LE
+        )
         return gatt != null
     }
 

@@ -189,7 +189,8 @@ class RadarService : Service(), BleRadarClient.Listener {
             )
             client?.disconnect()
             client = BleRadarClient(this@RadarService, this@RadarService)
-            val ok = client?.connect(mac) ?: false
+            // od 2. próby tryb cierpliwy — radar zajęty licznikiem rozgłasza się rzadko
+            val ok = client?.connect(mac, autoConnect = reconnectAttempt >= 2) ?: false
             if (!ok && !stopping) scheduleReconnect()
         }
     }
