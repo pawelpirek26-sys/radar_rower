@@ -253,3 +253,19 @@ kółka, chorągiewka). Zapamiętany styl "moto" spada na domyślny gravel.
   szedł WYŁĄCZNIE za systemem — stąd „nie działał" w demo.
 - Rower na ciemnym: koła/detale rysowały się prawie czarnym carWheel na ciemnej
   jezdni — teraz jasny roadLine (jezdnia ciemna w obu motywach = kontrast zawsze).
+
+## Aktualizacja 2026-08-07 — fix łączenia z realnym W100 (v0.9.4)
+
+User próbował sparować realny W100 („Radar67B2", rozpoznany po nazwie,
+-94 dBm) — apka orzekła INCOMPATIBLE. Trzy przyczyny i fixy:
+1. BUG GATT: requestMtu() + discoverServices() wołane NARAZ — operacje GATT
+   są sekwencyjne, druga bywała gubiona → niepełna lista usług. Fix:
+   requestMtu usunięte (pakiety ≤19 B mieszczą się w domyślnym MTU),
+   discoverServices po 400 ms pauzy stabilizującej.
+2. INCOMPATIBLE po JEDNEJ próbie — teraz 3 próby (backoff) zanim werdykt;
+   licznik zerowany przy sukcesie i ręcznym restarcie.
+3. Kontekst usera: radar równolegle połączony z licznikiem — większość
+   klonów obsługuje TYLKO JEDNO połączenie BLE; licznik po BLE blokuje
+   telefon (po ANT+ nie przeszkadza). Do testów: rozłączyć licznik.
+   Dodatkowo -94 dBm = skrajnie słaby sygnał; parować blisko telefonu.
+   Wskazówki wpisane w ekran INCOMPATIBLE.

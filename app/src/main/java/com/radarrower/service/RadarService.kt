@@ -58,6 +58,7 @@ class RadarService : Service(), BleRadarClient.Listener {
     private var alertPlayer: AlertPlayer? = null
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
+    private var incompatibleCount = 0
     private var wakeLock: PowerManager.WakeLock? = null
 
     @Volatile
@@ -112,6 +113,7 @@ class RadarService : Service(), BleRadarClient.Listener {
                 // zeruje backoff i zrywa bieżące połączenie na rzecz świeżego
                 reconnectJob?.cancel()
                 reconnectAttempt = 0
+                incompatibleCount = 0
                 connectSaved(initial = true)
             }
         }
@@ -133,6 +135,7 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     override fun onConnected(deviceName: String?) {
         reconnectAttempt = 0
+        incompatibleCount = 0
         RadarRepository.setConnectionState(ConnectionState.CONNECTED, deviceName)
     }
 
@@ -151,8 +154,16 @@ class RadarService : Service(), BleRadarClient.Listener {
     }
 
     override fun onIncompatible() {
-        // celowo BEZ scheduleReconnect — pętla łączenia z nie-radarem nie ma sensu
-        RadarRepository.setConnectionState(ConnectionState.INCOMPATIBLE)
+        if (stopping) return
+        // przy słabym sygnale odkrywanie usług potrafi zwrócić niepełną listę —
+        // trzy próby zanim ogłosimy, że to naprawdę nie radar
+        incompatibleCount++
+        if (incompatibleCount >= 3) {
+            RadarRepository.setConnectionState(ConnectionState.INCOMPATIBLE)
+        } else {
+            RadarRepository.setConnectionState(ConnectionState.RECONNECTING)
+            scheduleReconnect()
+        }
     }
 
     private fun acquireWakeLock() {

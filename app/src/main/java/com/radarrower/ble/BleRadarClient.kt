@@ -10,6 +10,8 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import java.util.UUID
 
@@ -55,6 +57,7 @@ class BleRadarClient(
     }
 
     private var gatt: BluetoothGatt? = null
+    private val handler = Handler(Looper.getMainLooper())
 
     @Volatile
     private var closed = false
@@ -95,8 +98,14 @@ class BleRadarClient(
             Log.d(TAG, "onConnectionStateChange status=$status newState=$newState")
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    g.requestMtu(64) // pakiet z 6 celami to 19 B, ale zapas nie szkodzi
-                    g.discoverServices()
+                    // BEZ requestMtu: pakiet radarowy ≤19 B mieści się w domyślnym MTU,
+                    // a requestMtu+discoverServices naraz to dwie operacje GATT —
+                    // druga bywa gubiona i lista usług wraca niepełna (fałszywe
+                    // „to nie radar"). Krótka pauza stabilizuje świeże połączenie
+                    // przy słabym sygnale.
+                    handler.postDelayed({
+                        if (!closed) runCatching { g.discoverServices() }
+                    }, 400)
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     runCatching { g.close() }

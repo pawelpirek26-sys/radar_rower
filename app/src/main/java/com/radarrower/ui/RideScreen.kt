@@ -204,7 +204,9 @@ fun RideScreen(
                     )
                     Text(
                         text = if (connection == ConnectionState.INCOMPATIBLE) {
-                            "Wybierz inne urządzenie: Ustawienia → Zmień radar"
+                            "Jeśli to radar: zbliż go do telefonu i użyj\n" +
+                                "Ustawienia → Restartuj połączenie.\n" +
+                                "Jeśli nie: Ustawienia → Zmień radar."
                         } else {
                             "Sprawdź, czy radar jest włączony"
                         },
