@@ -35,8 +35,12 @@ class BleRadarClient(
         /** Poziom baterii radaru w %, ze standardowego serwisu Battery (0x180F). */
         fun onBattery(levelPercent: Int)
 
-        /** Urządzenie po połączeniu NIE ma serwisu radarowego — nie ponawiać. */
-        fun onIncompatible()
+        /**
+         * Urządzenie po połączeniu NIE ma serwisu radarowego.
+         * [discoveredServices] — UUID-y usług, które faktycznie zgłosiło
+         * (do diagnostyki na ekranie Debug).
+         */
+        fun onIncompatible(discoveredServices: List<String>)
     }
 
     companion object {
@@ -100,20 +104,28 @@ class BleRadarClient(
         runCatching { g.readCharacteristic(ch) }
     }
 
+    /** Ukryta metoda czyszcząca cache GATT (standardowa praktyka, m.in. Nordic). */
+    @Suppress("PrivateApi")
+    private fun refreshGattCache(g: BluetoothGatt) {
+        runCatching { g.javaClass.getMethod("refresh").invoke(g) }
+    }
+
     private val callback = object : BluetoothGattCallback() {
 
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             Log.d(TAG, "onConnectionStateChange status=$status newState=$newState")
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    // BEZ requestMtu: pakiet radarowy ≤19 B mieści się w domyślnym MTU,
-                    // a requestMtu+discoverServices naraz to dwie operacje GATT —
-                    // druga bywa gubiona i lista usług wraca niepełna (fałszywe
-                    // „to nie radar"). Krótka pauza stabilizuje świeże połączenie
-                    // przy słabym sygnale.
+                    // Android CACHE'UJE listę usług per adres — jedno zepsute
+                    // odkrycie (historyczny wyścig z requestMtu) potrafi wracać
+                    // z cache'u przy każdej kolejnej próbie. Ukryte refresh()
+                    // czyści cache przed odkrywaniem.
+                    refreshGattCache(g)
+                    // BEZ requestMtu: pakiet radarowy ≤19 B mieści się w domyślnym
+                    // MTU, a druga równoległa operacja GATT bywała gubiona.
                     handler.postDelayed({
                         if (!closed) runCatching { g.discoverServices() }
-                    }, 400)
+                    }, 600)
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     runCatching { g.close() }
@@ -132,12 +144,12 @@ class BleRadarClient(
             val characteristic = g.getService(RADAR_SERVICE_UUID)
                 ?.getCharacteristic(RADAR_DATA_UUID)
             if (characteristic == null) {
-                // urządzenie sparowane po nazwie może nie być radarem — bez pętli retry
-                Log.w(TAG, "Brak serwisu/charakterystyki radarowej na urządzeniu")
+                val discovered = g.services.map { it.uuid.toString() }
+                Log.w(TAG, "Brak serwisu radarowego; urządzenie zgłasza: $discovered")
                 closed = true
                 runCatching { g.disconnect(); g.close() }
                 gatt = null
-                listener.onIncompatible()
+                listener.onIncompatible(discovered)
                 return
             }
             enableNotifications(g, characteristic)

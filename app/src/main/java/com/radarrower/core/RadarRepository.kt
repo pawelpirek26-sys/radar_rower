@@ -106,6 +106,12 @@ object RadarRepository {
         _debugLog.value = emptyList()
     }
 
+    /** Wpis diagnostyczny (nie-pakietowy) w logu Debug — np. lista usług GATT. */
+    fun logDiagnostic(message: String) {
+        val entry = RawPacket(System.currentTimeMillis(), message, null)
+        _debugLog.value = (_debugLog.value + entry).takeLast(MAX_DEBUG_PACKETS)
+    }
+
     /** Wywoływane przez klienta BLE dla każdej notyfikacji charakterystyki radarowej. */
     fun onRadarPacket(data: ByteArray) {
         val now = System.currentTimeMillis()

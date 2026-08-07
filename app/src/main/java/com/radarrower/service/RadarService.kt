@@ -153,8 +153,13 @@ class RadarService : Service(), BleRadarClient.Listener {
         RadarRepository.setBatteryLevel(levelPercent)
     }
 
-    override fun onIncompatible() {
+    override fun onIncompatible(discoveredServices: List<String>) {
         if (stopping) return
+        // diagnostyka do ekranu Debug: co urządzenie NAPRAWDĘ wystawia
+        RadarRepository.logDiagnostic(
+            "DIAG: brak serwisu radaru. Usługi urządzenia (${discoveredServices.size}): " +
+                (discoveredServices.joinToString("; ").ifEmpty { "PUSTA LISTA" })
+        )
         // przy słabym sygnale odkrywanie usług potrafi zwrócić niepełną listę —
         // trzy próby zanim ogłosimy, że to naprawdę nie radar
         incompatibleCount++
@@ -179,7 +184,8 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     private fun connectSaved(initial: Boolean) {
         scope.launch {
-            val mac = SettingsRepository.get(this@RadarService).current().deviceMac
+            val settings = SettingsRepository.get(this@RadarService).current()
+            var mac = settings.deviceMac
             if (mac == null) {
                 RadarRepository.setConnectionState(ConnectionState.DISCONNECTED)
                 return@launch
@@ -187,12 +193,48 @@ class RadarService : Service(), BleRadarClient.Listener {
             RadarRepository.setConnectionState(
                 if (initial) ConnectionState.CONNECTING else ConnectionState.RECONNECTING
             )
+
+            // po serii nieudanych prób poszukaj radaru skanem — urządzenia
+            // z adresem prywatnym (RPA) potrafią go rotować i zapisany MAC
+            // przestaje istnieć; nazwa radaru jest stała
+            if (reconnectAttempt >= 3) {
+                findRadarByScan(settings.deviceName, mac)?.let { freshMac ->
+                    if (freshMac != mac) {
+                        RadarRepository.logDiagnostic("DIAG: radar znaleziony pod nowym adresem $freshMac (było $mac)")
+                        SettingsRepository.get(this@RadarService)
+                            .saveDevice(freshMac, settings.deviceName)
+                        mac = freshMac
+                    }
+                }
+            }
+
             client?.disconnect()
             client = BleRadarClient(this@RadarService, this@RadarService)
             // od 2. próby tryb cierpliwy — radar zajęty licznikiem rozgłasza się rzadko
-            val ok = client?.connect(mac, autoConnect = reconnectAttempt >= 2) ?: false
+            val ok = client?.connect(mac!!, autoConnect = reconnectAttempt >= 2) ?: false
             if (!ok && !stopping) scheduleReconnect()
         }
+    }
+
+    /**
+     * Krótki skan w poszukiwaniu zapisanego radaru: dopasowanie po starym MAC
+     * albo po dokładnej nazwie (celowo NIE po samym serwisie radarowym —
+     * w peletonie złapalibyśmy cudzy radar).
+     */
+    private suspend fun findRadarByScan(name: String?, oldMac: String): String? {
+        val scanner = com.radarrower.ble.RadarScanner(this)
+        var found: String? = null
+        val started = scanner.start(allDevices = false) { d ->
+            if (d.mac == oldMac || (name != null && d.name == name)) found = d.mac
+        }
+        if (!started) return null
+        var waited = 0L
+        while (found == null && waited < 12_000) {
+            delay(500)
+            waited += 500
+        }
+        scanner.stop()
+        return found
     }
 
     private fun scheduleReconnect() {

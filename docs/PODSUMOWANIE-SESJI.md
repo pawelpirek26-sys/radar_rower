@@ -278,3 +278,17 @@ Fix: connect(mac, autoConnect) — od 2. próby reconnect tryb cierpliwy
 (autoConnect=true), bo radar zajęty drugim centralem rozgłasza się rzadko
 i szybka próba bezpośrednia się timeoutowała. Rada „rozłącz licznik" z 0.9.4
 wycofana — niepotrzebna po fixie GATT.
+
+## Aktualizacja 2026-08-07 — cache GATT, diagnostyka usług, skan po nazwie (v0.9.6)
+
+Licznik wyłączony, wciąż „brak serwisu radaru". Trzy nowe mechanizmy:
+1. refresh() (ukryte API) czyści CACHE GATT przed odkrywaniem — Android
+   zapamiętuje listę usług per adres i jedno historycznie zepsute odkrycie
+   (wyścig z requestMtu sprzed 0.9.4) wracało z cache'u przy każdej próbie.
+   Ręczna alternatywa: wyłącz/włącz Bluetooth w telefonie.
+2. Werdykt INCOMPATIBLE dopisuje do logu Debug pełną listę usług, które
+   urządzenie NAPRAWDĘ zgłosiło („DIAG: …") — screenshot z 🐞 pokaże,
+   czy W100 mówi innym serwisem niż Varia.
+3. Adres 40:… = resolvable private address (może rotować) — po 3 nieudanych
+   próbach serwis skanuje po starym MAC LUB dokładnej nazwie (celowo nie po
+   samym serwisie — w peletonie złapałby cudzy radar) i aktualizuje MAC.
