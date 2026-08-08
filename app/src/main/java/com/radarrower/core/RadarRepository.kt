@@ -181,8 +181,47 @@ object RadarRepository {
         updateTargets(merged, now)
     }
 
+    /** Punkt odniesienia do liczenia prędkości ze zmiany dystansu. */
+    private data class SpeedAnchor(val distanceM: Int, val timeMs: Long, val speedKmh: Int)
+
+    private var speedAnchors = mutableMapOf<Int, SpeedAnchor>()
+
+    /**
+     * Uzupełnia prędkość tam, gdzie radar jej nie podał — licząc ją z tempa
+     * zbliżania się celu. Punkt odniesienia przesuwamy dopiero przy realnej
+     * zmianie dystansu (radar aktualizuje go rzadziej niż wysyła ramki).
+     */
+    private fun withEstimatedSpeed(targets: List<RadarTarget>, now: Long): List<RadarTarget> {
+        val fresh = mutableMapOf<Int, SpeedAnchor>()
+        val result = targets.map { target ->
+            val anchor = speedAnchors[target.id]
+            if (anchor == null) {
+                fresh[target.id] = SpeedAnchor(target.distanceM, now, target.speedKmh)
+                return@map target
+            }
+            if (target.distanceM == anchor.distanceM) {
+                // dystans jeszcze się nie zmienił — trzymamy poprzedni pomiar
+                fresh[target.id] = anchor
+                return@map if (target.speedKmh > 0) target else target.copy(speedKmh = anchor.speedKmh)
+            }
+            val seconds = (now - anchor.timeMs) / 1000.0
+            val closedM = anchor.distanceM - target.distanceM
+            val estimated = if (seconds >= 0.15 && closedM > 0) {
+                (closedM / seconds * 3.6).toInt().coerceIn(0, 200)
+            } else {
+                anchor.speedKmh
+            }
+            // wygładzenie, żeby kwantyzacja co 3,125 m nie skakała odczytem
+            val smoothed = if (anchor.speedKmh > 0) (estimated + anchor.speedKmh) / 2 else estimated
+            fresh[target.id] = SpeedAnchor(target.distanceM, now, smoothed)
+            if (target.speedKmh > 0) target else target.copy(speedKmh = smoothed)
+        }
+        speedAnchors = fresh
+        return result
+    }
+
     private fun updateTargets(list: List<RadarTarget>, now: Long) {
-        val sorted = list.sortedBy { it.distanceM }
+        val sorted = withEstimatedSpeed(list, now).sortedBy { it.distanceM }
         _targets.value = sorted
 
         val ids = sorted.map { it.id }.toSet()
@@ -221,6 +260,7 @@ object RadarRepository {
         _targets.value = emptyList()
         _threatLevel.value = ThreatLevel.CLEAR
         knownIds = emptySet()
+        speedAnchors = mutableMapOf()
         lastFrame = null
         hadVehicles = false
         urgentActive = false

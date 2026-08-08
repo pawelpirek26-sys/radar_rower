@@ -22,15 +22,13 @@ enum class RadarProtocol { VARIA, W100 }
  * b7 = prędkość celu 2 w BCD (bywa też polem poziomu zagrożenia — patrz niżej)
  * ```
  *
- * **Jednostka dystansu: 3,125 m** (kwantyzacja jak w ANT+ Varia) — wartość
- * ROBOCZA, potwierdzona w 2 z 4 przeanalizowanych zdarzeń: tempo spadku pola
- * podzielone przez odczytaną prędkość daje 2,99 m i 2,89 m na jednostkę.
- * W dwóch pozostałych zdarzeniach wychodzi 2,0 m i 6,0 m — czyli albo bajt
- * prędkości nie zawsze opisuje ten sam cel, albo slot ma inną skalę.
- *
- * ⚠ **Do kalibracji pomiarem ze znanych odległości** (radar nieruchomy,
- * cel w 10/20/40 m). Do tego czasu: wykrycie pojazdu i licznik są pewne
- * (ramka spoczynkowa jest jednoznaczna), metry i km/h traktuj orientacyjnie.
+ * **Jednostka dystansu: 3,125 m** (kwantyzacja jak w ANT+ Varia) —
+ * POTWIERDZONA na pomiarze przy nieruchomym obserwatorze (2026-08-08):
+ * pełny przejazd auta dał ciągły spadek 24→1 jednostki (75 m → 3 m) w 5,7 s,
+ * co przy tej jednostce oznacza 45,5 km/h, a radar raportował 45–55 km/h.
+ * Cztery niezależne zdarzenia dały przelicznik 2,60 / 2,99 / 3,55 / 3,32 m
+ * (średnio 3,11 m). Wcześniejsze sprzeczne wyniki brały się stąd, że logi
+ * zbierano w jadącym samochodzie.
  */
 object W100Parser {
 
@@ -62,8 +60,13 @@ object W100Parser {
 
         if (b[1] == 0x00) return RadarFrame(b[0], emptyList()) // droga pusta
 
-        val speed1 = bcd(b[6]) ?: 0
-        val speed2 = bcd(b[7]) ?: 0
+        // Bajt prędkości niesie sensowną wartość tylko dla pewnych śladów
+        // (0x33 = 33 km/h, 0x55 = 55 km/h — zweryfikowane na przejazdach).
+        // Przy słabych śladach bywa małym licznikiem (0x01–0x06) — wtedy
+        // zwracamy 0 = „nieznana", a prędkość policzy sobie sama aplikacja
+        // ze zmiany dystansu w czasie.
+        val speed1 = (bcd(b[6]) ?: 0).takeIf { it >= MIN_PLAUSIBLE_SPEED_KMH } ?: 0
+        val speed2 = (bcd(b[7]) ?: 0).takeIf { it >= MIN_PLAUSIBLE_SPEED_KMH } ?: 0
 
         // Radar śledzi kilka celów w osobnych polach bitowych. Które z nich niesie
         // ruch, zależy od slotu, w jakim radar umieścił dany pojazd — dlatego
@@ -88,7 +91,7 @@ object W100Parser {
                 id = index + 1,
                 distanceM = distance,
                 // b7 bywa polem statusu — bierzemy je tylko jako sensowną prędkość
-                speedKmh = if (index > 0 && speed2 >= MIN_PLAUSIBLE_SPEED_KMH) speed2 else speed1,
+                speedKmh = if (index > 0 && speed2 > 0) speed2 else speed1,
             )
         }
 

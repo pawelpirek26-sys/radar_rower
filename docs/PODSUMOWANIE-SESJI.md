@@ -389,3 +389,21 @@ Drugi, znacznie dłuższy log (11:32–11:34, realne przejazdy) wymusił korekt�
   najpewniej obiekty nieruchome mijane ze stałą prędkością auta. Dlatego
   kalibracja jednostki z Δdystans/Δczas dawała sprzeczne wyniki.
   Dane z roweru (i z pomiaru ze znanych odległości) będą rozstrzygające.
+
+## 2026-08-08 — KALIBRACJA POTWIERDZONA + własne liczenie prędkości (v1.1.0)
+
+Log przy NIERUCHOMYM obserwatorze rozstrzygnął kalibrację:
+- pełny przejazd auta: pole A spada ciągle 24→1 jednostki = **75 m → 3 m**
+  w 5,69 s, co przy 3,125 m/jednostkę daje 45,5 km/h — radar raportował
+  55 km/h na początku i 45 km/h na końcu przejazdu. ✅
+- cztery niezależne zdarzenia: przelicznik 2,60 / 2,99 / 3,55 / 3,32 m,
+  średnio 3,11 m ≈ 3,125 m. Wcześniejsze sprzeczności wynikały z tego,
+  że logi zbierano w jadącym samochodzie (mijane obiekty nieruchome).
+
+Naprawa „czasem prędkość nie zgadza się":
+- bajt prędkości bywa małym licznikiem (0x01–0x06) przy słabych śladach —
+  takie wartości nie są już pokazywane jako km/h (dawały absurdalne „3 km/h"
+  dla auta jadącego ~35 km/h),
+- w zamian aplikacja **liczy prędkość sama** z tempa zbliżania się celu
+  (punkt odniesienia przesuwany dopiero przy realnej zmianie dystansu,
+  wynik wygładzany) — działa dla każdego śladu, niezależnie od firmware'u.
