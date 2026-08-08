@@ -336,12 +336,15 @@ private fun RoadStrip(
                 cy + 6f,
                 textPaint,
             )
-            drawContext.canvas.nativeCanvas.drawText(
-                "${t.speedKmh} km/h",
-                laneX + 64f,
-                cy + 54f,
-                speedPaint,
-            )
+            // prędkość dopiero po zmierzeniu tempa zbliżania (~0,3 s od wykrycia)
+            if (t.speedKmh > 0) {
+                drawContext.canvas.nativeCanvas.drawText(
+                    "+${t.speedKmh} km/h",
+                    laneX + 64f,
+                    cy + 54f,
+                    speedPaint,
+                )
+            }
         }
     }
 }

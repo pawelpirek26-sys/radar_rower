@@ -187,41 +187,48 @@ object RadarRepository {
     private var speedAnchors = mutableMapOf<Int, SpeedAnchor>()
 
     /**
-     * Uzupełnia prędkość tam, gdzie radar jej nie podał — licząc ją z tempa
-     * zbliżania się celu. Punkt odniesienia przesuwamy dopiero przy realnej
-     * zmianie dystansu (radar aktualizuje go rzadziej niż wysyła ramki).
+     * Wylicza **prędkość zbliżania** (o ile szybciej auto jedzie od Ciebie) —
+     * jedna, spójna wielkość dla ekranu i dla progu czerwonego alertu.
+     *
+     * Świadoma decyzja: NIE używamy prędkości podawanej przez radar, bo to
+     * prędkość auta względem drogi — mieszanie obu dawało raz jedną, raz drugą
+     * wielkość, a różnica równa się prędkości roweru. Zbliżanie liczymy sami
+     * z tempa spadku dystansu, więc znaczy zawsze to samo, na każdym radarze.
+     *
+     * Punkt odniesienia przesuwamy dopiero przy realnej zmianie dystansu —
+     * radar aktualizuje go rzadziej (co ~250 ms) niż wysyła ramki (co ~80 ms).
      */
-    private fun withEstimatedSpeed(targets: List<RadarTarget>, now: Long): List<RadarTarget> {
+    private fun withClosingSpeed(targets: List<RadarTarget>, now: Long): List<RadarTarget> {
         val fresh = mutableMapOf<Int, SpeedAnchor>()
         val result = targets.map { target ->
             val anchor = speedAnchors[target.id]
             if (anchor == null) {
-                fresh[target.id] = SpeedAnchor(target.distanceM, now, target.speedKmh)
-                return@map target
+                // pierwsza ramka śladu — jeszcze nie ma z czego liczyć
+                fresh[target.id] = SpeedAnchor(target.distanceM, now, 0)
+                return@map target.copy(speedKmh = 0)
             }
             if (target.distanceM == anchor.distanceM) {
-                // dystans jeszcze się nie zmienił — trzymamy poprzedni pomiar
                 fresh[target.id] = anchor
-                return@map if (target.speedKmh > 0) target else target.copy(speedKmh = anchor.speedKmh)
+                return@map target.copy(speedKmh = anchor.speedKmh)
             }
             val seconds = (now - anchor.timeMs) / 1000.0
             val closedM = anchor.distanceM - target.distanceM
-            val estimated = if (seconds >= 0.15 && closedM > 0) {
-                (closedM / seconds * 3.6).toInt().coerceIn(0, 200)
-            } else {
-                anchor.speedKmh
+            val measured = when {
+                closedM <= 0 -> 0 // auto się oddala — to nie zagrożenie
+                seconds >= 0.15 -> (closedM / seconds * 3.6).toInt().coerceIn(0, 200)
+                else -> anchor.speedKmh
             }
-            // wygładzenie, żeby kwantyzacja co 3,125 m nie skakała odczytem
-            val smoothed = if (anchor.speedKmh > 0) (estimated + anchor.speedKmh) / 2 else estimated
+            // wygładzenie, żeby kwantyzacja dystansu co 3,125 m nie miotała odczytem
+            val smoothed = if (anchor.speedKmh > 0) (measured + anchor.speedKmh) / 2 else measured
             fresh[target.id] = SpeedAnchor(target.distanceM, now, smoothed)
-            if (target.speedKmh > 0) target else target.copy(speedKmh = smoothed)
+            target.copy(speedKmh = smoothed)
         }
         speedAnchors = fresh
         return result
     }
 
     private fun updateTargets(list: List<RadarTarget>, now: Long) {
-        val sorted = withEstimatedSpeed(list, now).sortedBy { it.distanceM }
+        val sorted = withClosingSpeed(list, now).sortedBy { it.distanceM }
         _targets.value = sorted
 
         val ids = sorted.map { it.id }.toSet()

@@ -77,7 +77,7 @@ class SettingsRepository(private val context: Context) {
             },
             appTheme = p[Keys.APP_THEME] ?: "system",
             riderStyle = p[Keys.RIDER_STYLE] ?: "gravel",
-            redThresholdKmh = p[Keys.RED_THRESHOLD] ?: 50,
+            redThresholdKmh = p[Keys.RED_THRESHOLD] ?: 35,
             soundEnabled = p[Keys.SOUND_ENABLED] ?: true,
             useAlarmStream = p[Keys.USE_ALARM_STREAM] ?: true,
             independentVolume = p[Keys.INDEPENDENT_VOLUME] ?: true,

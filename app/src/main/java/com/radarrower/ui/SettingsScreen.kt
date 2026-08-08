@@ -241,8 +241,15 @@ fun SettingsScreen(
         // ------------------------------------------------ ALERTY
         Section("Alerty")
         Text(
-            "Czerwony alert, gdy auto jedzie szybciej niż: ${settings.redThresholdKmh} km/h",
+            "Czerwony alert, gdy auto zbliża się szybciej niż: " +
+                "${settings.redThresholdKmh} km/h",
             fontSize = 15.sp,
+        )
+        Text(
+            "To prędkość zbliżania, czyli o ile auto jest szybsze od Ciebie " +
+                "(na ekranie z plusem). Auto jadące 70 km/h, gdy Ty jedziesz 25, " +
+                "zbliża się z 45 km/h.",
+            fontSize = 13.sp,
         )
         Slider(
             value = settings.redThresholdKmh.toFloat(),

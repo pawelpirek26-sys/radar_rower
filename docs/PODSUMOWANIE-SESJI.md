@@ -449,3 +449,21 @@ muzyka grała pełną głośnością i zagłuszała krótki sygnał. Naprawa:
 - przy aktywnej muzyce dolna część suwaka głośności jest podbijana do 75%,
   bo cichy alert przepadłby nawet w przyciszonym utworze,
 - uwaga audio jest oddawana zaraz po sygnale (muzyka wraca sama).
+
+## 2026-08-08 — próg na prędkości ZBLIŻANIA, spójnie (v1.2.0)
+
+Decyzja usera: próg czerwonego alertu ma działać na prędkości zbliżania,
+bez kompensacji GPS. Wdrożone konsekwentnie:
+- prędkość celu to ZAWSZE prędkość zbliżania liczona przez aplikację ze
+  spadku dystansu; odczyt z radaru (prędkość względem drogi) NIE jest już
+  używany, bo mieszanie dawało raz jedną, raz drugą wielkość różniącą się
+  o prędkość roweru,
+- oddalający się cel → 0 km/h (nie jest zagrożeniem),
+- prędkość pojawia się po ~0,3 s od wykrycia (potrzebne dwa pomiary dystansu);
+  do tego czasu nie pokazujemy liczby zamiast zgadywać,
+- na ekranie jazdy prędkość z plusem („+26 km/h") — sygnał, że to nadwyżka
+  nad prędkością rowerzysty,
+- opis progu w Ustawieniach przepisany + przykład liczbowy,
+- domyślny próg 50 → 35 km/h (50 było dobrane dla prędkości auta względem
+  drogi; przy zbliżaniu praktycznie nigdy by nie zadziałał).
+  ❗Istniejąca instalacja zachowuje zapisane 50 — user powinien zmienić ręcznie.
