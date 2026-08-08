@@ -49,6 +49,7 @@ import com.radarrower.core.AlertEvent
 import com.radarrower.core.AlertPlayer
 import com.radarrower.core.DemoSimulator
 import com.radarrower.core.Permissions
+import com.radarrower.core.RadarRepository
 import com.radarrower.data.SettingsRepository
 import com.radarrower.service.RadarService
 import com.radarrower.ui.DebugScreen
@@ -102,6 +103,14 @@ class MainActivity : ComponentActivity() {
         }
 
         val currentSettings = settings ?: return
+
+        // ekran jazdy nad ekranem blokady (telefon na kierownicy, ekran się zablokował)
+        LaunchedEffect(currentSettings.showOnLockScreen) {
+            if (Build.VERSION.SDK_INT >= 27) {
+                setShowWhenLocked(currentSettings.showOnLockScreen)
+                setTurnScreenOn(currentSettings.showOnLockScreen)
+            }
+        }
 
         // podtrzymanie ekranu wg trybu (keepOn i standby podtrzymują)
         LaunchedEffect(currentSettings.screenMode) {
@@ -167,6 +176,11 @@ class MainActivity : ComponentActivity() {
                     onIndependentVolume = { v -> scope.launch { settingsRepo.setIndependentVolume(v) } },
                     onVolume = { v -> scope.launch { settingsRepo.setVolume(v) } },
                     onVibration = { v -> scope.launch { settingsRepo.setVibrationEnabled(v) } },
+                    onProgressiveAlerts = { v -> scope.launch { settingsRepo.setProgressiveAlerts(v) } },
+                    onNoiseFilter = { v -> scope.launch { settingsRepo.setNoiseFilter(v) } },
+                    onShowOnLockScreen = { v -> scope.launch { settingsRepo.setShowOnLockScreen(v) } },
+                    onSniffExtraServices = { v -> scope.launch { settingsRepo.setSniffExtraServices(v) } },
+                    onResetStats = { RadarRepository.resetRideStats() },
                     onPlayOnHeadphones = { v -> scope.launch { settingsRepo.setPlayOnHeadphones(v) } },
                     onSoundTheme = { v ->
                         scope.launch { settingsRepo.setSoundTheme(v) }

@@ -63,6 +63,11 @@ fun SettingsScreen(
     onTestSound: () -> Unit,
     onTestUrgent: () -> Unit,
     onVibration: (Boolean) -> Unit,
+    onProgressiveAlerts: (Boolean) -> Unit,
+    onNoiseFilter: (Boolean) -> Unit,
+    onShowOnLockScreen: (Boolean) -> Unit,
+    onSniffExtraServices: (Boolean) -> Unit,
+    onResetStats: () -> Unit,
     onDemoMode: (Boolean) -> Unit,
     onRequestIgnoreBattery: () -> Unit,
     onOpenAppSettings: () -> Unit,
@@ -73,6 +78,7 @@ fun SettingsScreen(
 ) {
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
     val battery by RadarRepository.batteryLevel.collectAsStateWithLifecycle()
+    val stats by RadarRepository.rideStats.collectAsStateWithLifecycle()
     val versionName = LocalContext.current.let { ctx ->
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }
             .getOrNull() ?: "?"
@@ -219,6 +225,11 @@ fun SettingsScreen(
             modifier = Modifier.padding(top = 6.dp),
         )
 
+        SwitchRow(
+            "Pokazuj nad ekranem blokady",
+            settings.showOnLockScreen,
+            onShowOnLockScreen,
+        )
         Text("Motyw aplikacji:", fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp))
         ChipRow(
             options = listOf("system" to "Jak system", "light" to "Jasny", "dark" to "Ciemny"),
@@ -307,6 +318,46 @@ fun SettingsScreen(
             }
         }
         SwitchRow("Wibracje", settings.vibrationEnabled, onVibration)
+        SwitchRow(
+            "Alerty progresywne (tik coraz szybszy, im bliżej)",
+            settings.progressiveAlerts,
+            onProgressiveAlerts,
+        )
+        if (settings.progressiveAlerts) {
+            Text(
+                "Jak czujnik cofania: sygnał powtarzany od co 1,6 s (auto daleko) " +
+                    "do co 0,3 s (auto blisko). Zastępuje pojedynczy beep przy wykryciu.",
+                fontSize = 13.sp,
+            )
+        }
+        SwitchRow(
+            "Filtr fałszywych wykryć",
+            settings.noiseFilter,
+            onNoiseFilter,
+        )
+        if (settings.noiseFilter) {
+            Text(
+                "Ślad musi utrzymać się dwie ramki, żeby wywołać alert — wycisza " +
+                    "przypadkowe migawki radaru. Koszt: wykrycie później o ~0,2 s.",
+                fontSize = 13.sp,
+            )
+        }
+
+        // ------------------------------------------------ STATYSTYKI
+        Section("Ten przejazd")
+        Text("Wykryte pojazdy: ${stats.vehicles}", fontSize = 15.sp)
+        Text(
+            "Najbliższe minięcie: " + (stats.closestPassM?.let { "$it m" } ?: "—"),
+            fontSize = 15.sp,
+        )
+        Text(
+            "Największe zbliżanie: " +
+                (if (stats.maxClosingKmh > 0) "${stats.maxClosingKmh} km/h" else "—"),
+            fontSize = 15.sp,
+        )
+        OutlinedButton(onClick = onResetStats, modifier = Modifier.padding(top = 8.dp)) {
+            Text("Zeruj licznik")
+        }
 
         // ------------------------------------------------ DEMO
         Section("Demo")
@@ -328,6 +379,19 @@ fun SettingsScreen(
         )
         OutlinedButton(onClick = onOpenDebug, modifier = Modifier.padding(top = 8.dp)) {
             Text("Otwórz log pakietów")
+        }
+        SwitchRow(
+            "Nasłuchuj nierozpoznanych usług radaru",
+            settings.sniffExtraServices,
+            onSniffExtraServices,
+        )
+        if (settings.sniffExtraServices) {
+            Text(
+                "W100 wystawia dwie usługi, których nie rozpoznaliśmy — może tam być " +
+                    "prawdziwy poziom baterii albo sterowanie światłem. Ich pakiety " +
+                    "trafią do logu. Wymaga ponownego połączenia (Restartuj połączenie).",
+                fontSize = 13.sp,
+            )
         }
 
         // ------------------------------------------------ O APLIKACJI

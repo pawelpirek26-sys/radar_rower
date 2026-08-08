@@ -41,6 +41,14 @@ data class AppSettings(
     /** Brzmienie alertów: "beep" | "horn" (klakson) | "bell" (dzwonek). */
     val soundTheme: String,
     val batteryPromptDismissed: Boolean,
+    /** Alerty progresywne: sygnał powtarzany tym szybciej, im auto bliżej. */
+    val progressiveAlerts: Boolean,
+    /** Ślad musi utrzymać się dwie ramki, żeby wywołać alert (filtr szumu). */
+    val noiseFilter: Boolean,
+    /** Ekran jazdy widoczny nad ekranem blokady. */
+    val showOnLockScreen: Boolean,
+    /** Diagnostyka: nasłuchuj też nierozpoznanych usług radaru. */
+    val sniffExtraServices: Boolean,
 )
 
 class SettingsRepository(private val context: Context) {
@@ -63,6 +71,10 @@ class SettingsRepository(private val context: Context) {
         val PLAY_ON_HEADPHONES = booleanPreferencesKey("play_on_headphones")
         val SOUND_THEME = stringPreferencesKey("sound_theme")
         val BATTERY_PROMPT_DISMISSED = booleanPreferencesKey("battery_prompt_dismissed")
+        val PROGRESSIVE_ALERTS = booleanPreferencesKey("progressive_alerts")
+        val NOISE_FILTER = booleanPreferencesKey("noise_filter")
+        val SHOW_ON_LOCK = booleanPreferencesKey("show_on_lock_screen")
+        val SNIFF_EXTRA = booleanPreferencesKey("sniff_extra_services")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p ->
@@ -87,6 +99,10 @@ class SettingsRepository(private val context: Context) {
             playOnHeadphones = p[Keys.PLAY_ON_HEADPHONES] ?: true,
             soundTheme = p[Keys.SOUND_THEME] ?: "beep",
             batteryPromptDismissed = p[Keys.BATTERY_PROMPT_DISMISSED] ?: false,
+            progressiveAlerts = p[Keys.PROGRESSIVE_ALERTS] ?: true,
+            noiseFilter = p[Keys.NOISE_FILTER] ?: true,
+            showOnLockScreen = p[Keys.SHOW_ON_LOCK] ?: false,
+            sniffExtraServices = p[Keys.SNIFF_EXTRA] ?: false,
         )
     }
 
@@ -144,6 +160,18 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setBatteryPromptDismissed(value: Boolean) =
         context.dataStore.edit { it[Keys.BATTERY_PROMPT_DISMISSED] = value }
+
+    suspend fun setProgressiveAlerts(value: Boolean) =
+        context.dataStore.edit { it[Keys.PROGRESSIVE_ALERTS] = value }
+
+    suspend fun setNoiseFilter(value: Boolean) =
+        context.dataStore.edit { it[Keys.NOISE_FILTER] = value }
+
+    suspend fun setShowOnLockScreen(value: Boolean) =
+        context.dataStore.edit { it[Keys.SHOW_ON_LOCK] = value }
+
+    suspend fun setSniffExtraServices(value: Boolean) =
+        context.dataStore.edit { it[Keys.SNIFF_EXTRA] = value }
 
     companion object {
         @Volatile

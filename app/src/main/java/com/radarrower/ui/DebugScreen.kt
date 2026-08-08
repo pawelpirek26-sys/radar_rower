@@ -18,12 +18,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.radarrower.core.RadarRepository
+import android.content.Intent
+import androidx.core.content.FileProvider
+import com.radarrower.core.RawPacket
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,6 +43,7 @@ fun DebugScreen() {
     val log by RadarRepository.debugLog.collectAsStateWithLifecycle()
     val paused by RadarRepository.debugPaused.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     val listState = rememberLazyListState()
     val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.ROOT)
 
@@ -67,12 +73,15 @@ fun DebugScreen() {
                 Text("Wyczyść")
             }
             Button(onClick = {
-                val text = log.joinToString("\n") { p ->
-                    "${timeFormat.format(Date(p.timestampMs))}  ${p.hex}"
-                }
-                clipboard.setText(AnnotatedString(text))
+                clipboard.setText(AnnotatedString(logAsText(log, timeFormat)))
             }) {
                 Text("Kopiuj")
+            }
+            Button(onClick = {
+                // przy tysiącu wpisów schowek się dławi — plik jest pewniejszy
+                shareLogFile(context, logAsText(log, timeFormat))
+            }) {
+                Text("Plik")
             }
         }
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
@@ -98,5 +107,28 @@ fun DebugScreen() {
                 }
             }
         }
+    }
+}
+
+
+private fun logAsText(log: List<RawPacket>, format: SimpleDateFormat): String =
+    log.joinToString("\n") { "${format.format(Date(it.timestampMs))}  ${it.hex}" }
+
+/**
+ * Zapisuje log do pliku w cache i otwiera systemowe udostępnianie — przy
+ * tysiącu wpisów schowek bywa obcinany, a plik można wysłać w całości.
+ */
+private fun shareLogFile(context: android.content.Context, text: String) {
+    runCatching {
+        val dir = File(context.cacheDir, "logs").apply { mkdirs() }
+        val file = File(dir, "radar-log.txt")
+        file.writeText(text)
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Wyślij log"))
     }
 }

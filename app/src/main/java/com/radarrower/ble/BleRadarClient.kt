@@ -84,6 +84,10 @@ class BleRadarClient(
 
     @Volatile
     private var sniffing = false
+
+    /** Tryb diagnostyczny: dodatkowe usługi obok normalnie działającego radaru. */
+    @Volatile
+    private var exploring = false
     private val sniffQueue = ArrayDeque<BluetoothGattCharacteristic>()
 
     /** Protokół wykryty po odkryciu usług — decyduje, którym parserem czytać. */
@@ -100,6 +104,10 @@ class BleRadarClient(
      *   osiągalne. Ważne przy radarze obsługującym RÓWNOLEGLE licznik i telefon:
      *   zajęty drugim centralem potrafi rozgłaszać się rzadko.
      */
+    /** Czy po połączeniu subskrybować też nierozpoznane usługi (diagnostyka). */
+    @Volatile
+    var exploreExtraServices = false
+
     fun connect(mac: String, autoConnect: Boolean = false): Boolean {
         val adapter: BluetoothAdapter =
             (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
@@ -116,6 +124,7 @@ class BleRadarClient(
     fun disconnect() {
         closed = true
         sniffing = false
+        exploring = false
         sniffQueue.clear()
         runCatching {
             gatt?.disconnect()
@@ -254,6 +263,29 @@ class BleRadarClient(
             enableNotifications(g, characteristic)
         }
 
+        /**
+         * Diagnostyka: subskrybuje charakterystyki notyfikujące spoza znanych
+         * usług radaru. W100 wystawia jeszcze dwie nierozpoznane usługi —
+         * może tam siedzieć prawdziwy poziom baterii albo sterowanie światłem.
+         */
+        private fun exploreExtras(g: BluetoothGatt) {
+            val known = setOf(RADAR_SERVICE_UUID, W100_SERVICE_UUID, BATTERY_SERVICE_UUID)
+            val extras = g.services.filterNot { it.uuid in known }
+                .flatMap { it.characteristics }
+                .filter {
+                    it.properties and (
+                        BluetoothGattCharacteristic.PROPERTY_NOTIFY or
+                            BluetoothGattCharacteristic.PROPERTY_INDICATE
+                        ) != 0
+                }
+            if (extras.isEmpty()) return
+            listener.onSniffStart(extras.map { shortUuid(it.uuid) }, extras.size)
+            sniffQueue.clear()
+            sniffQueue.addAll(extras)
+            exploring = true
+            enableNextSniff(g)
+        }
+
         private fun enableNotifications(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
             g.setCharacteristicNotification(ch, true)
             val descriptor = ch.getDescriptor(CCCD_UUID) ?: run {
@@ -277,8 +309,13 @@ class BleRadarClient(
                 if (!enableNextSniff(g)) readBattery(g)
                 return
             }
+            if (exploring) {
+                if (!enableNextSniff(g)) exploring = false
+                return
+            }
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 listener.onConnected(runCatching { g.device.name }.getOrNull(), protocol)
+                if (exploreExtraServices) exploreExtras(g)
                 readBattery(g) // dopiero po CCCD — operacje GATT muszą iść sekwencyjnie
             } else {
                 Log.w(TAG, "CCCD write failed: $status")
@@ -337,6 +374,8 @@ class BleRadarClient(
             when {
                 sniffing -> listener.onSniffPacket(shortUuid(ch.uuid), value)
                 ch.uuid == dataUuid -> listener.onPacket(value)
+                // diagnostyka nierozpoznanych usług — obok normalnej pracy radaru
+                else -> listener.onSniffPacket(shortUuid(ch.uuid), value)
             }
         }
     }

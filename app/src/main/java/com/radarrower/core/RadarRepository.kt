@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /** Stan połączenia z radarem. */
 enum class ConnectionState {
@@ -34,7 +35,21 @@ enum class AlertEvent {
     NEW_VEHICLE,
     URGENT,
     ALL_CLEAR,
+
+    /** Tik alertu progresywnego — powtarzany tym gęściej, im auto bliżej. */
+    PROXIMITY_TICK,
+
+    /** Radar przestał odpowiadać w trakcie jazdy — cichy radar to fałszywe
+     *  poczucie bezpieczeństwa, więc trzeba o tym powiedzieć na głos. */
+    CONNECTION_LOST,
 }
+
+/** Statystyki przejazdu — zerowane przy starcie serwisu. */
+data class RideStats(
+    val vehicles: Int = 0,
+    val closestPassM: Int? = null,
+    val maxClosingKmh: Int = 0,
+)
 
 /** Wpis logu surowych pakietów dla ekranu Debug. */
 data class RawPacket(
@@ -66,6 +81,9 @@ object RadarRepository {
     private val _batteryLevel = MutableStateFlow<Int?>(null)
     val batteryLevel = _batteryLevel.asStateFlow()
 
+    private val _rideStats = MutableStateFlow(RideStats())
+    val rideStats = _rideStats.asStateFlow()
+
     private val _alerts = MutableSharedFlow<AlertEvent>(extraBufferCapacity = 16)
     val alerts = _alerts.asSharedFlow()
 
@@ -86,6 +104,12 @@ object RadarRepository {
     @Volatile
     private var protocol = RadarProtocol.VARIA
 
+    @Volatile
+    private var noiseFilterEnabled = true
+
+    /** Cele z poprzedniej ramki — do potwierdzania śladów (filtr szumu). */
+    private var previousRaw = mapOf<Int, Int>()
+
     fun setProtocol(value: RadarProtocol) {
         protocol = value
     }
@@ -97,6 +121,19 @@ object RadarRepository {
             resetTargets()
             _batteryLevel.value = null
         }
+    }
+
+    /** Pozwala serwisowi zagrać alert niezwiązany z pakietem (np. utrata radaru). */
+    fun emitAlert(event: AlertEvent) {
+        _alerts.tryEmit(event)
+    }
+
+    fun resetRideStats() {
+        _rideStats.value = RideStats()
+    }
+
+    fun setNoiseFilter(enabled: Boolean) {
+        noiseFilterEnabled = enabled
     }
 
     fun setBatteryLevel(percent: Int) {
@@ -227,7 +264,27 @@ object RadarRepository {
         return result
     }
 
-    private fun updateTargets(list: List<RadarTarget>, now: Long) {
+    /**
+     * Filtr szumu: ślad musi pojawić się w DWÓCH kolejnych ramkach (na podobnym
+     * dystansie), żeby trafić na ekran. Jednoramkowe migawki radaru — widoczne
+     * w logach jako pola pojawiające się na moment — nie wywołają wtedy alertu.
+     * Koszt: pierwsze wykrycie opóźnione o jedną ramkę (~80–250 ms).
+     */
+    private fun confirmed(list: List<RadarTarget>): List<RadarTarget> {
+        if (!noiseFilterEnabled) {
+            previousRaw = list.associate { it.id to it.distanceM }
+            return list
+        }
+        val result = list.filter { target ->
+            val before = previousRaw[target.id]
+            before != null && kotlin.math.abs(before - target.distanceM) <= 12
+        }
+        previousRaw = list.associate { it.id to it.distanceM }
+        return result
+    }
+
+    private fun updateTargets(rawList: List<RadarTarget>, now: Long) {
+        val list = confirmed(rawList)
         val sorted = withClosingSpeed(list, now).sortedBy { it.distanceM }
         _targets.value = sorted
 
@@ -243,6 +300,16 @@ object RadarRepository {
         }
 
         if (sorted.isNotEmpty()) {
+            // statystyki przejazdu: licznik aut, najbliższe minięcie, max zbliżanie
+            val nearest = sorted.first().distanceM
+            val fastest = sorted.maxOf { it.speedKmh }
+            _rideStats.update { stats ->
+                stats.copy(
+                    vehicles = stats.vehicles + newIds.size,
+                    closestPassM = minOf(stats.closestPassM ?: Int.MAX_VALUE, nearest),
+                    maxClosingKmh = maxOf(stats.maxClosingKmh, fastest),
+                )
+            }
             lastNonEmptyMs = now
             if (urgent && !urgentActive) {
                 urgentActive = true
@@ -268,6 +335,7 @@ object RadarRepository {
         _threatLevel.value = ThreatLevel.CLEAR
         knownIds = emptySet()
         speedAnchors = mutableMapOf()
+        previousRaw = emptyMap()
         lastFrame = null
         hadVehicles = false
         urgentActive = false

@@ -475,3 +475,26 @@ bez kompensacji GPS. Wdrożone konsekwentnie:
   „Diagnostyka" → „Otwórz log pakietów". Na ekranie jazdy zostały tylko
   dwie ikony: czuwanie (księżyc) i ustawienia (zębatka). Cofnięcie z logu
   wraca do Ustawień, nie na ekran jazdy.
+
+## 2026-08-08 — pakiet usprawnień do testów (v1.3.0)
+
+Wdrożone wszystkie propozycje z listy:
+1. **Ostrzeżenie o utracie radaru** — nowe zdarzenie CONNECTION_LOST: opadająca
+   sekwencja dźwięków + długa wibracja, gdy radar zamilknie PO tym, jak działał
+   (flaga wasConnected — nie alarmujemy przy nieudanym pierwszym łączeniu).
+   Gra głośnością pilnego alertu i wstrzymuje muzykę.
+2. **Alerty progresywne** — tik powtarzany co 1600/1100/700/450/300 ms zależnie
+   od dystansu najbliższego celu (>100/60/30/15/≤15 m). Zastępują pojedynczy
+   beep „nowy pojazd" (inaczej dublowałyby się). Przełącznik, domyślnie ON.
+   Tiki nie wibrują — telefon by buczał bez przerwy.
+3. **Statystyki przejazdu** — Ustawienia → „Ten przejazd": liczba pojazdów,
+   najbliższe minięcie, największe zbliżanie + zerowanie. Reset także przy
+   świeżym starcie serwisu.
+4. **Filtr fałszywych wykryć** — ślad musi pojawić się w dwóch kolejnych
+   ramkach na podobnym dystansie (±12 m). Przełącznik, domyślnie ON.
+5. **Nasłuch nierozpoznanych usług** (Diagnostyka, domyślnie OFF) — subskrybuje
+   charakterystyki notyfikujące spoza znanych usług OBOK normalnej pracy radaru
+   i zrzuca je do logu; szukamy prawdziwej baterii / sterowania światłem.
+6. Ekran jazdy nad ekranem blokady (przełącznik), tryb poziomy (orientacja
+   fullSensor), eksport logu do pliku i udostępnianie (FileProvider) — schowek
+   dławił się przy tysiącu wpisów.

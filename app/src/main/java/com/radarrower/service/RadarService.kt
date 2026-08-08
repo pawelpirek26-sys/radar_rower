@@ -15,6 +15,7 @@ import com.radarrower.R
 import com.radarrower.RadarApp
 import com.radarrower.ble.BleRadarClient
 import com.radarrower.core.AlertPlayer
+import com.radarrower.core.AlertEvent
 import com.radarrower.core.ConnectionState
 import com.radarrower.core.RadarRepository
 import com.radarrower.data.SettingsRepository
@@ -59,6 +60,13 @@ class RadarService : Service(), BleRadarClient.Listener {
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
     private var incompatibleCount = 0
+
+    @Volatile
+    private var settingsSnapshot: com.radarrower.data.AppSettings? = null
+
+    /** Czy przed rozłączeniem radar faktycznie działał — tylko wtedy alarmujemy. */
+    @Volatile
+    private var wasConnected = false
     private var wakeLock: PowerManager.WakeLock? = null
 
     @Volatile
@@ -73,13 +81,21 @@ class RadarService : Service(), BleRadarClient.Listener {
         // obserwuj ustawienia (próg czerwonego, dźwięki/wibracje/strumień)
         scope.launch {
             SettingsRepository.get(this@RadarService).settings.collect { s ->
+                settingsSnapshot = s
                 RadarRepository.setRedThreshold(s.redThresholdKmh)
+                RadarRepository.setNoiseFilter(s.noiseFilter)
                 alertPlayer?.settings = s
             }
         }
         // graj alerty
         scope.launch {
-            RadarRepository.alerts.collect { alertPlayer?.play(it) }
+            RadarRepository.alerts.collect { event ->
+                // przy alertach progresywnych tiki zastępują pojedynczy beep
+                // „nowy pojazd" — inaczej dwa dźwięki nakładałyby się na siebie
+                val redundant = event == AlertEvent.NEW_VEHICLE &&
+                    settingsSnapshot?.progressiveAlerts == true
+                if (!redundant) alertPlayer?.play(event)
+            }
         }
         // aktualizuj notyfikację przy zmianie stanu/celów
         scope.launch {
@@ -87,6 +103,20 @@ class RadarService : Service(), BleRadarClient.Listener {
         }
         scope.launch {
             RadarRepository.targets.collect { updateNotification() }
+        }
+        // alerty progresywne: tik powtarzany tym gęściej, im auto bliżej
+        scope.launch {
+            while (true) {
+                val targets = RadarRepository.targets.value
+                val progressive = settingsSnapshot?.progressiveAlerts == true
+                val connected = RadarRepository.connectionState.value == ConnectionState.CONNECTED
+                if (progressive && connected && targets.isNotEmpty()) {
+                    RadarRepository.emitAlert(AlertEvent.PROXIMITY_TICK)
+                    delay(tickIntervalMs(targets.minOf { it.distanceM }))
+                } else {
+                    delay(300)
+                }
+            }
         }
         // okresowe odświeżanie poziomu baterii radaru
         scope.launch {
@@ -114,6 +144,9 @@ class RadarService : Service(), BleRadarClient.Listener {
                 reconnectJob?.cancel()
                 reconnectAttempt = 0
                 incompatibleCount = 0
+                if (RadarRepository.connectionState.value == ConnectionState.DISCONNECTED) {
+                    RadarRepository.resetRideStats()
+                }
                 connectSaved(initial = true)
             }
         }
@@ -133,9 +166,19 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     // --- BleRadarClient.Listener ---
 
+    /** Im bliżej auto, tym krótsza przerwa między tikami (jak czujnik cofania). */
+    private fun tickIntervalMs(nearestM: Int): Long = when {
+        nearestM <= 15 -> 300
+        nearestM <= 30 -> 450
+        nearestM <= 60 -> 700
+        nearestM <= 100 -> 1100
+        else -> 1600
+    }
+
     override fun onConnected(deviceName: String?, protocol: com.radarrower.ble.RadarProtocol) {
         reconnectAttempt = 0
         incompatibleCount = 0
+        wasConnected = true
         RadarRepository.setProtocol(protocol)
         RadarRepository.logDiagnostic("DIAG: połączono, protokół = $protocol")
         RadarRepository.setConnectionState(ConnectionState.CONNECTED, deviceName)
@@ -143,6 +186,12 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     override fun onDisconnected() {
         if (stopping) return
+        // radar zamilkł w trakcie jazdy — user MUSI o tym wiedzieć, bo cichy
+        // radar wygląda dokładnie jak pusta droga
+        if (wasConnected) {
+            wasConnected = false
+            RadarRepository.emitAlert(AlertEvent.CONNECTION_LOST)
+        }
         RadarRepository.setConnectionState(ConnectionState.RECONNECTING)
         scheduleReconnect()
     }
@@ -160,6 +209,15 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     override fun onSniffStart(discoveredServices: List<String>, characteristicCount: Int) {
         if (stopping) return
+        // radar już działa, a to tylko diagnostyczny nasłuch dodatkowych usług —
+        // nie ruszamy stanu połączenia ani nazwy urządzenia
+        if (RadarRepository.connectionState.value == ConnectionState.CONNECTED) {
+            RadarRepository.logDiagnostic(
+                "DIAG: nasłuch dodatkowych usług ($characteristicCount charakterystyk): " +
+                    discoveredServices.joinToString("; ")
+            )
+            return
+        }
         reconnectAttempt = 0
         incompatibleCount = 0
         RadarRepository.logDiagnostic(
@@ -235,7 +293,9 @@ class RadarService : Service(), BleRadarClient.Listener {
             }
 
             client?.disconnect()
-            client = BleRadarClient(this@RadarService, this@RadarService)
+            client = BleRadarClient(this@RadarService, this@RadarService).apply {
+                exploreExtraServices = settings.sniffExtraServices
+            }
             // od 2. próby tryb cierpliwy — radar zajęty licznikiem rozgłasza się rzadko
             val ok = client?.connect(mac!!, autoConnect = reconnectAttempt >= 2) ?: false
             if (!ok && !stopping) scheduleReconnect()

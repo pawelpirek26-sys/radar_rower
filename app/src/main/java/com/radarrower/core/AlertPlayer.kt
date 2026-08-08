@@ -64,8 +64,9 @@ class AlertPlayer(context: Context) {
             scope.launch {
                 val (freqs, durations) = tonesFor(s.soundTheme, event)
                 // pilny alert ma własną głośność — może grać głośniej niż zwykłe
-                val gain = if (event == AlertEvent.URGENT) s.urgentVolume else s.volume
-                playTone(s, freqs, durations, gain, event == AlertEvent.URGENT)
+                val loud = event == AlertEvent.URGENT || event == AlertEvent.CONNECTION_LOST
+                val gain = if (loud) s.urgentVolume else s.volume
+                playTone(s, freqs, durations, gain, loud)
             }
         }
         if (s.vibrationEnabled) vibrate(event)
@@ -87,6 +88,9 @@ class AlertPlayer(context: Context) {
                     floatArrayOf(430f, 0f, 470f) to longArrayOf(130, 60, 300)
                 AlertEvent.ALL_CLEAR ->
                     floatArrayOf(330f) to longArrayOf(220)
+                AlertEvent.PROXIMITY_TICK -> floatArrayOf(400f) to longArrayOf(70)
+                AlertEvent.CONNECTION_LOST ->
+                    floatArrayOf(500f, 0f, 380f, 0f, 260f) to longArrayOf(180, 60, 180, 60, 320)
             }
             "bell" -> when (event) {
                 // ding-ding jak dzwonek rowerowy
@@ -97,6 +101,9 @@ class AlertPlayer(context: Context) {
                         longArrayOf(160, 40, 160, 40, 280)
                 AlertEvent.ALL_CLEAR ->
                     floatArrayOf(1568f) to longArrayOf(400)
+                AlertEvent.PROXIMITY_TICK -> floatArrayOf(2093f) to longArrayOf(80)
+                AlertEvent.CONNECTION_LOST ->
+                    floatArrayOf(1568f, 0f, 1245f, 0f, 988f) to longArrayOf(180, 60, 180, 60, 320)
             }
             else -> when (event) { // "beep"
                 AlertEvent.NEW_VEHICLE ->
@@ -106,6 +113,11 @@ class AlertPlayer(context: Context) {
                         longArrayOf(90, 50, 90, 50, 180)
                 AlertEvent.ALL_CLEAR ->
                     floatArrayOf(660f, 990f) to longArrayOf(140, 220)
+                // krótki tik — powtarzany tym gęściej, im auto bliżej
+                AlertEvent.PROXIMITY_TICK -> floatArrayOf(760f) to longArrayOf(70)
+                // utrata radaru: opadająca sekwencja, brzmi jak awaria
+                AlertEvent.CONNECTION_LOST ->
+                    floatArrayOf(880f, 0f, 700f, 0f, 520f) to longArrayOf(180, 60, 180, 60, 320)
             }
         }
 
@@ -115,6 +127,10 @@ class AlertPlayer(context: Context) {
             AlertEvent.NEW_VEHICLE -> VibrationEffect.createWaveform(longArrayOf(0, 120, 80, 120), -1)
             AlertEvent.URGENT -> VibrationEffect.createWaveform(longArrayOf(0, 90, 50, 90, 50, 250), -1)
             AlertEvent.ALL_CLEAR -> VibrationEffect.createOneShot(180, VibrationEffect.DEFAULT_AMPLITUDE)
+            // tiki nie wibrują — przy gęstym powtarzaniu telefon by buczał bez przerwy
+            AlertEvent.PROXIMITY_TICK -> return
+            AlertEvent.CONNECTION_LOST ->
+                VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300, 150, 300), -1)
         }
         runCatching { v.vibrate(effect) }
     }
