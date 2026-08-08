@@ -42,6 +42,9 @@ enum class AlertEvent {
     /** Radar przestał odpowiadać w trakcie jazdy — cichy radar to fałszywe
      *  poczucie bezpieczeństwa, więc trzeba o tym powiedzieć na głos. */
     CONNECTION_LOST,
+
+    /** Z tyłu jedzie kolumna, nie pojedyncze auto — inna decyzja na drodze. */
+    CONVOY,
 }
 
 /** Statystyki przejazdu — zerowane przy starcie serwisu. */
@@ -66,6 +69,12 @@ object RadarRepository {
 
     const val MAX_DEBUG_PACKETS = 1000
 
+    /** Minimalny odstęp między pojazdami, żeby uznać je za osobne (metry). */
+    private const val CONVOY_MIN_GAP_M = 12
+
+    /** Jak długo układ musi się utrzymać, zanim ogłosimy kolumnę (ms). */
+    private const val CONVOY_MIN_DURATION_MS = 900L
+
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState = _connectionState.asStateFlow()
 
@@ -84,6 +93,11 @@ object RadarRepository {
     private val _rideStats = MutableStateFlow(RideStats())
     val rideStats = _rideStats.asStateFlow()
 
+    private val _convoy = MutableStateFlow(false)
+
+    /** Czy z tyłu jedzie kolumna pojazdów (a nie jedno auto). */
+    val convoy = _convoy.asStateFlow()
+
     private val _alerts = MutableSharedFlow<AlertEvent>(extraBufferCapacity = 16)
     val alerts = _alerts.asSharedFlow()
 
@@ -100,6 +114,7 @@ object RadarRepository {
     private var hadVehicles = false
     private var urgentActive = false
     private var redThresholdKmh = 50
+    private var convoyCandidateSinceMs = 0L
 
     @Volatile
     private var protocol = RadarProtocol.VARIA
@@ -299,6 +314,8 @@ object RadarRepository {
             else -> ThreatLevel.CLEAR
         }
 
+        updateConvoy(sorted, now)
+
         if (sorted.isNotEmpty()) {
             // statystyki przejazdu: licznik aut, najbliższe minięcie, max zbliżanie
             val nearest = sorted.first().distanceM
@@ -330,12 +347,47 @@ object RadarRepository {
         }
     }
 
+    /**
+     * Kolumna pojazdów — sytuacja wymagająca innej decyzji niż pojedyncze auto:
+     * po minięciu pierwszego NIE wolno zjeżdżać do środka pasa.
+     *
+     * Celowo konserwatywnie, bo fałszywa kolumna kazałaby czekać bez powodu:
+     *  1. co najmniej dwa cele,
+     *  2. odstęp między skrajnymi co najmniej [CONVOY_MIN_GAP_M] — bliższe siebie
+     *     odczyty to najczęściej JEDNO auto policzone dwa razy (parser czyta
+     *     trzy pola ramki, radar bywa niezdecydowany co do slotu),
+     *  3. utrzymane przez [CONVOY_MIN_DURATION_MS] — jednorazowy przebłysk
+     *     nie robi kolumny.
+     */
+    private fun updateConvoy(sorted: List<RadarTarget>, now: Long) {
+        val spread = if (sorted.size >= 2) {
+            sorted.last().distanceM - sorted.first().distanceM
+        } else {
+            0
+        }
+        val candidate = sorted.size >= 2 && spread >= CONVOY_MIN_GAP_M
+
+        if (!candidate) {
+            convoyCandidateSinceMs = 0L
+            _convoy.value = false
+            return
+        }
+        if (convoyCandidateSinceMs == 0L) convoyCandidateSinceMs = now
+        val stable = now - convoyCandidateSinceMs >= CONVOY_MIN_DURATION_MS
+        if (stable && !_convoy.value) {
+            _convoy.value = true
+            _alerts.tryEmit(AlertEvent.CONVOY)
+        }
+    }
+
     private fun resetTargets() {
         _targets.value = emptyList()
         _threatLevel.value = ThreatLevel.CLEAR
         knownIds = emptySet()
         speedAnchors = mutableMapOf()
         previousRaw = emptyMap()
+        convoyCandidateSinceMs = 0L
+        _convoy.value = false
         lastFrame = null
         hadVehicles = false
         urgentActive = false

@@ -91,6 +91,8 @@ class AlertPlayer(context: Context) {
                 AlertEvent.PROXIMITY_TICK -> floatArrayOf(400f) to longArrayOf(70)
                 AlertEvent.CONNECTION_LOST ->
                     floatArrayOf(500f, 0f, 380f, 0f, 260f) to longArrayOf(180, 60, 180, 60, 320)
+                AlertEvent.CONVOY ->
+                    floatArrayOf(380f, 0f, 380f, 0f, 380f) to longArrayOf(120, 60, 120, 60, 120)
             }
             "bell" -> when (event) {
                 // ding-ding jak dzwonek rowerowy
@@ -104,6 +106,8 @@ class AlertPlayer(context: Context) {
                 AlertEvent.PROXIMITY_TICK -> floatArrayOf(2093f) to longArrayOf(80)
                 AlertEvent.CONNECTION_LOST ->
                     floatArrayOf(1568f, 0f, 1245f, 0f, 988f) to longArrayOf(180, 60, 180, 60, 320)
+                AlertEvent.CONVOY ->
+                    floatArrayOf(1760f, 0f, 1976f, 0f, 2093f) to longArrayOf(120, 50, 120, 50, 200)
             }
             else -> when (event) { // "beep"
                 AlertEvent.NEW_VEHICLE ->
@@ -118,6 +122,10 @@ class AlertPlayer(context: Context) {
                 // utrata radaru: opadająca sekwencja, brzmi jak awaria
                 AlertEvent.CONNECTION_LOST ->
                     floatArrayOf(880f, 0f, 700f, 0f, 520f) to longArrayOf(180, 60, 180, 60, 320)
+                // kolumna: sekwencja WZNOSZĄCA — słyszalnie inna niż opadający
+                // sygnał awarii i niż płaskie tiki zbliżania
+                AlertEvent.CONVOY ->
+                    floatArrayOf(700f, 0f, 900f, 0f, 1100f) to longArrayOf(120, 50, 120, 50, 200)
             }
         }
 
@@ -131,6 +139,8 @@ class AlertPlayer(context: Context) {
             AlertEvent.PROXIMITY_TICK -> return
             AlertEvent.CONNECTION_LOST ->
                 VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300, 150, 300), -1)
+            AlertEvent.CONVOY ->
+                VibrationEffect.createWaveform(longArrayOf(0, 100, 90, 100, 90, 100), -1)
         }
         runCatching { v.vibrate(effect) }
     }

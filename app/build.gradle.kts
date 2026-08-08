@@ -12,8 +12,8 @@ android {
         applicationId = "com.radarrower"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "1.4.0"
+        versionCode = 32
+        versionName = "1.5.0"
     }
 
     buildTypes {

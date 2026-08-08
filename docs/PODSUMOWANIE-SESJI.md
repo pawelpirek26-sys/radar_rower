@@ -525,3 +525,20 @@ przejazdów), `ui/HistoryScreen.kt`.
 ⚠ DO PODMIANY PRZED WYDANIEM: `BillingManager.PRO_PRODUCT_ID` musi zgadzać się
 z produktem w Play Console. W buildzie debug Play zwraca BILLING_UNAVAILABLE
 i apka pokazuje się jako Free — to oczekiwane.
+
+## 2026-08-08 — wykrywanie kolumny pojazdów (v1.5.0)
+
+Dla rowerzysty kolumna to INNA decyzja niż pojedyncze auto: po minięciu
+pierwszego pojazdu nie wolno wracać do środka pasa. Aplikacja to teraz rozróżnia.
+
+Kryteria świadomie konserwatywne, bo fałszywa kolumna kazałaby czekać bez
+powodu (a to uczy ignorowania alertów):
+ 1. co najmniej dwa cele,
+ 2. odstęp między skrajnymi ≥ 12 m — bliższe odczyty to najczęściej JEDNO auto
+    policzone dwa razy (parser czyta trzy pola ramki, radar bywa niezdecydowany),
+ 3. układ utrzymany ≥ 900 ms — jednorazowy przebłysk nie robi kolumny.
+
+Sygnalizacja: osobny dźwięk WZNOSZĄCY (odróżnialny od opadającego sygnału
+awarii i od płaskich tików zbliżania) + potrójna wibracja + komunikat na
+ekranie „KOLUMNA — zostań przy krawędzi". Sygnał „czysto" i tak nie zagra,
+dopóki ostatni pojazd nie minie.

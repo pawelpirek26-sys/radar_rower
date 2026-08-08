@@ -88,6 +88,7 @@ fun RideScreen(
     val connection by RadarRepository.connectionState.collectAsStateWithLifecycle()
     val battery by RadarRepository.batteryLevel.collectAsStateWithLifecycle()
     val deviceName by RadarRepository.deviceName.collectAsStateWithLifecycle()
+    val convoy by RadarRepository.convoy.collectAsStateWithLifecycle()
 
     val connected = connection == ConnectionState.CONNECTED
     val bgColor by animateColorAsState(
@@ -190,6 +191,18 @@ fun RideScreen(
                             fontSize = 28.sp,
                         )
                     }
+                }
+                // kolumna = inna decyzja na drodze niż pojedyncze auto:
+                // po minięciu pierwszego NIE wracaj do środka pasa
+                if (convoy) {
+                    Text(
+                        text = "KOLUMNA — zostań przy krawędzi",
+                        color = palette.vehicleAccent,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
                 }
             } else {
                 Column(
