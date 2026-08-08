@@ -314,3 +314,32 @@ status/wersja, 00 00 pole celów. Bateria czyta się ze standardowego 0x180F
 v0.9.8: identyczne kolejne ramki zwijane do wpisu z licznikiem (×N) — ramki
 spoczynkowe nie wypychają ciekawych; bufor Debug 300→1000; na ekranie jazdy
 ostrzeżenie „tryb nasłuchu — alerty NIEAKTYWNE".
+
+## 2026-08-08 — PROTOKÓŁ W100 ROZSZYFROWANY, parser wdrożony (v1.0.0)
+
+Log nasłuchu z realnych przejazdów pozwolił zdekodować protokół W100
+(TUTULOO/MMWR). Serwis `aa86ffe0-3884-465c-a034-c242988b0000`,
+notyfikacje z `aa86ffe2-…`, ramka 8 B co ~120–250 ms:
+
+```
+b0=0x30 nagłówek | b1=maska celów (0x00 = pusto) | b2=0x00
+b3 = licznik ramek (bity 0-5) + 2 najmłodsze bity dystansu celu 1 (bity 6-7)
+b4 = dolny nibble: bity 2-5 dystansu celu 1; górny nibble: młodsze bity dystansu celu 2
+b5 = 2 młodsze bity: starsze bity dystansu celu 2; górny nibble: cel 3
+b6 = prędkość celu 1 w BCD (0x33 = 33 km/h) | b7 = prędkość celu 2 w BCD
+```
+
+🔑 **Jednostka dystansu = 3,125 m** (ta sama kwantyzacja co ANT+ Varia).
+Weryfikacja fizyczna na 3 niezależnych przejazdach: dystanse maleją liniowo,
+a prędkość policzona z Δdystans/Δczas zgadza się z bajtem prędkości
+(72→62 m w 0,98 s = 36 km/h przy odczycie 33; 15,6→12,5 m w 0,24 s = 46
+przy odczycie 43). Ramka spoczynkowa: `30 00 55 41 10 04 00 00`.
+
+Wdrożenie: `W100Parser` + `RadarProtocol`; `BleRadarClient` wykrywa protokół
+po odkryciu usług (Varia → W100 → nasłuch) i przekazuje go do repozytorium,
+które routuje pakiety do właściwego parsera. Tryb nasłuchu zostaje dla
+nieznanych urządzeń. Cele poza zasięgiem (>160 m) odsiewane jako błąd
+dekodowania. Demo wymusza protokół Varia (fabrykuje ramki w tym formacie).
+
+⚠ Do kalibracji w terenie: prędkość celu 2 (b7 bywa polem statusu — brana
+tylko gdy ≥10 km/h, inaczej dziedziczy prędkość celu 1) i pole celu 3.

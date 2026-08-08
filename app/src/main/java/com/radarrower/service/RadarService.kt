@@ -133,9 +133,11 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     // --- BleRadarClient.Listener ---
 
-    override fun onConnected(deviceName: String?) {
+    override fun onConnected(deviceName: String?, protocol: com.radarrower.ble.RadarProtocol) {
         reconnectAttempt = 0
         incompatibleCount = 0
+        RadarRepository.setProtocol(protocol)
+        RadarRepository.logDiagnostic("DIAG: połączono, protokół = $protocol")
         RadarRepository.setConnectionState(ConnectionState.CONNECTED, deviceName)
     }
 

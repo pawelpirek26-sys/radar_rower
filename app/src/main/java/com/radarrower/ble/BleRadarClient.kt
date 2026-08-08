@@ -28,7 +28,7 @@ class BleRadarClient(
 ) {
 
     interface Listener {
-        fun onConnected(deviceName: String?)
+        fun onConnected(deviceName: String?, protocol: RadarProtocol)
         fun onDisconnected()
         fun onPacket(data: ByteArray)
 
@@ -68,6 +68,12 @@ class BleRadarClient(
         /** Standardowy serwis Battery — wspólny dla radarów wszystkich producentów. */
         val BATTERY_SERVICE_UUID: UUID = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
         val BATTERY_LEVEL_UUID: UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
+
+        /** Serwis własny radaru W100 (TUTULOO/MMWR) — nie mówi protokołem Varia. */
+        val W100_SERVICE_UUID: UUID = UUID.fromString("aa86ffe0-3884-465c-a034-c242988b0000")
+
+        /** Charakterystyka danych radarowych W100 (notyfikacje, ramki 8 B). */
+        val W100_DATA_UUID: UUID = UUID.fromString("aa86ffe2-3884-465c-a034-c242988b0000")
     }
 
     private var gatt: BluetoothGatt? = null
@@ -79,6 +85,14 @@ class BleRadarClient(
     @Volatile
     private var sniffing = false
     private val sniffQueue = ArrayDeque<BluetoothGattCharacteristic>()
+
+    /** Protokół wykryty po odkryciu usług — decyduje, którym parserem czytać. */
+    @Volatile
+    private var protocol = RadarProtocol.VARIA
+
+    /** UUID charakterystyki, z której płyną dane radarowe. */
+    @Volatile
+    private var dataUuid: UUID = RADAR_DATA_UUID
 
     /**
      * @param autoConnect false = szybka próba bezpośrednia (wymaga aktywnego
@@ -198,8 +212,20 @@ class BleRadarClient(
                 g.disconnect()
                 return
             }
-            val characteristic = g.getService(RADAR_SERVICE_UUID)
+            // najpierw Varia (Garmin i zgodne), potem własny protokół W100
+            var characteristic = g.getService(RADAR_SERVICE_UUID)
                 ?.getCharacteristic(RADAR_DATA_UUID)
+            if (characteristic != null) {
+                protocol = RadarProtocol.VARIA
+                dataUuid = RADAR_DATA_UUID
+            } else {
+                characteristic = g.getService(W100_SERVICE_UUID)
+                    ?.getCharacteristic(W100_DATA_UUID)
+                if (characteristic != null) {
+                    protocol = RadarProtocol.W100
+                    dataUuid = W100_DATA_UUID
+                }
+            }
             if (characteristic == null) {
                 val discovered = g.services.map { it.uuid.toString() }
                 Log.w(TAG, "Brak serwisu radarowego; urządzenie zgłasza: $discovered")
@@ -252,7 +278,7 @@ class BleRadarClient(
                 return
             }
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                listener.onConnected(runCatching { g.device.name }.getOrNull())
+                listener.onConnected(runCatching { g.device.name }.getOrNull(), protocol)
                 readBattery(g) // dopiero po CCCD — operacje GATT muszą iść sekwencyjnie
             } else {
                 Log.w(TAG, "CCCD write failed: $status")
@@ -310,7 +336,7 @@ class BleRadarClient(
         private fun handleNotification(ch: BluetoothGattCharacteristic, value: ByteArray) {
             when {
                 sniffing -> listener.onSniffPacket(shortUuid(ch.uuid), value)
-                ch.uuid == RADAR_DATA_UUID -> listener.onPacket(value)
+                ch.uuid == dataUuid -> listener.onPacket(value)
             }
         }
     }

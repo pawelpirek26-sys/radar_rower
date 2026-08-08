@@ -24,6 +24,8 @@ object DemoSimulator {
     fun start(scope: CoroutineScope) {
         if (isRunning) return
         job = scope.launch {
+            // demo fabrykuje pakiety w formacie Varia — parser musi być zgodny
+            RadarRepository.setProtocol(com.radarrower.ble.RadarProtocol.VARIA)
             RadarRepository.setConnectionState(ConnectionState.CONNECTED, "DEMO")
             RadarRepository.setBatteryLevel(87)
 

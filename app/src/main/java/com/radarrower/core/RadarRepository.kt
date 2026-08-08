@@ -1,8 +1,10 @@
 package com.radarrower.core
 
 import com.radarrower.ble.RadarFrame
+import com.radarrower.ble.RadarProtocol
 import com.radarrower.ble.RadarTarget
 import com.radarrower.ble.VariaParser
+import com.radarrower.ble.W100Parser
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -81,6 +83,13 @@ object RadarRepository {
     private var urgentActive = false
     private var redThresholdKmh = 50
 
+    @Volatile
+    private var protocol = RadarProtocol.VARIA
+
+    fun setProtocol(value: RadarProtocol) {
+        protocol = value
+    }
+
     fun setConnectionState(state: ConnectionState, name: String? = null) {
         _connectionState.value = state
         if (name != null) _deviceName.value = name
@@ -142,7 +151,10 @@ object RadarRepository {
     /** Wywoływane przez klienta BLE dla każdej notyfikacji charakterystyki radarowej. */
     fun onRadarPacket(data: ByteArray) {
         val now = System.currentTimeMillis()
-        val frame = VariaParser.parse(data)
+        val frame = when (protocol) {
+            RadarProtocol.W100 -> W100Parser.parse(data)
+            RadarProtocol.VARIA -> VariaParser.parse(data)
+        }
 
         if (!_debugPaused.value) {
             val entry = RawPacket(now, VariaParser.toHex(data), frame)
@@ -153,7 +165,9 @@ object RadarRepository {
 
         // Podzielony payload: dwie części niosą ten sam górny półbajt licznika —
         // scal cele zamiast nadpisywać (inaczej >6 aut migotałoby listą).
-        val merged = if (VariaParser.isContinuation(lastFrame, frame) &&
+        // dzielone payloady występują tylko w Varii — W100 wysyła kompletne ramki
+        val merged = if (protocol == RadarProtocol.VARIA &&
+            VariaParser.isContinuation(lastFrame, frame) &&
             now - lastNonEmptyMs < 500
         ) {
             val prevTargets = _targets.value
