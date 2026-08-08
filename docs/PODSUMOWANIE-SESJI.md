@@ -353,3 +353,24 @@ Nazwa zmieniona na życzenie usera. Podział na dwa ciągi:
 applicationId ŚWIADOMIE bez zmian (com.radarrower) — zmiana utworzyłaby drugą
 aplikację na telefonie i skasowała sparowanie oraz ustawienia. Teksty
 przestały odwoływać się do konkretnego modelu radaru.
+
+## 2026-08-08 — rewizja parsera W100 po logu z jazdy (v1.0.2)
+
+Drugi, znacznie dłuższy log (11:32–11:34, realne przejazdy) wymusił korektę:
+
+1. **BUG: ramki z nagłówkiem 0x31 były ODRZUCANE.** Radar nadaje dwie
+   przeplatane serie (0x30 i 0x31) — parser wymagał dokładnie 0x30, więc
+   połowa danych z gęstego ruchu przepadała. Teraz akceptowany cały 0x3X.
+2. **Cele siedzą w RÓŻNYCH polach zależnie od slotu.** W jednym zdarzeniu
+   porusza się pole A = (b4&0x0F)<<2 | b3>>6 przy zerowym B, w innym B = b3&0x3F
+   przy nieruchomym A. Wcześniejsza wersja czytała tylko A → zdarzenia typu T1/E4
+   pokazywały dystans 0 m (fałszywy „samochód tuż za tobą"). Teraz czytane są
+   wszystkie trzy pola, z odsianiem duplikatów (±3 m) i zakresu.
+3. **Kalibracja 3,125 m: potwierdzona w 2 z 4 zdarzeń** (2,99 i 2,89 m/jednostkę),
+   w 2 wychodzi 2,0 i 6,0 — czyli bajt prędkości nie zawsze opisuje ten sam cel.
+   Wcześniejsze „potwierdzenie fizyczne" opierało się na 2 próbkach i było
+   przedwczesne. Pewne pozostaje: wykrycie pojazdu i licznik (ramka spoczynkowa
+   30 00 55 41 10 04 00 00 jest jednoznaczna).
+
+❗ Do domknięcia: pomiar ze ZNANYCH odległości (radar nieruchomy, cel 10/20/40 m)
+— to jedyny sposób, by przypiąć jednostkę bez zgadywania z czasu.

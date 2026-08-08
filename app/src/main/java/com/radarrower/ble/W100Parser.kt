@@ -22,15 +22,15 @@ enum class RadarProtocol { VARIA, W100 }
  * b7 = prędkość celu 2 w BCD (bywa też polem poziomu zagrożenia — patrz niżej)
  * ```
  *
- * **Jednostka dystansu: 3,125 m** — ta sama kwantyzacja co w ANT+ Varia.
- * Weryfikacja na trzech niezależnych przejazdach: dystans maleje liniowo,
- * a prędkość policzona z jego zmiany w czasie zgadza się z bajtem prędkości
- * (23→20 jednostek w 0,98 s = 34,6 km/h przy odczycie 33 km/h; 5→4 jednostki
- * w 0,24 s = 46 km/h przy odczycie 43 km/h).
+ * **Jednostka dystansu: 3,125 m** (kwantyzacja jak w ANT+ Varia) — wartość
+ * ROBOCZA, potwierdzona w 2 z 4 przeanalizowanych zdarzeń: tempo spadku pola
+ * podzielone przez odczytaną prędkość daje 2,99 m i 2,89 m na jednostkę.
+ * W dwóch pozostałych zdarzeniach wychodzi 2,0 m i 6,0 m — czyli albo bajt
+ * prędkości nie zawsze opisuje ten sam cel, albo slot ma inną skalę.
  *
- * ⚠ Prędkość drugiego celu (b7) bywa też małą wartością wyglądającą na poziom
- * zagrożenia — dlatego przyjmujemy ją tylko, gdy mieści się w sensownym
- * zakresie prędkości pojazdu, inaczej dziedziczy prędkość celu pierwszego.
+ * ⚠ **Do kalibracji pomiarem ze znanych odległości** (radar nieruchomy,
+ * cel w 10/20/40 m). Do tego czasu: wykrycie pojazdu i licznik są pewne
+ * (ramka spoczynkowa jest jednoznaczna), metry i km/h traktuj orientacyjnie.
  */
 object W100Parser {
 
@@ -57,46 +57,41 @@ object W100Parser {
     fun parse(data: ByteArray): RadarFrame? {
         if (data.size < 8) return null
         val b = IntArray(8) { data[it].toInt() and 0xFF }
-        if (b[0] != 0x30) return null
+        // radar używa też nagłówka 0x31 (druga przeplatana seria ramek)
+        if ((b[0] and 0xF0) != 0x30) return null
 
-        val counter = b[3] and 0x3F // młodsze 6 bitów bajtu 3 to licznik ramek
-        if (b[1] == 0x00) return RadarFrame(counter, emptyList()) // droga pusta
+        if (b[1] == 0x00) return RadarFrame(b[0], emptyList()) // droga pusta
 
-        val targets = ArrayList<RadarTarget>(3)
-
-        // cel 1: 6-bitowy dystans rozrzucony między b4 (dolny nibble) i b3 (bity 6-7)
-        val units1 = ((b[4] and 0x0F) shl 2) or ((b[3] shr 6) and 0x03)
         val speed1 = bcd(b[6]) ?: 0
-        targets += RadarTarget(
-            id = 1,
-            distanceM = (units1 * DISTANCE_UNIT_M).toInt(),
-            speedKmh = speed1,
+        val speed2 = bcd(b[7]) ?: 0
+
+        // Radar śledzi kilka celów w osobnych polach bitowych. Które z nich niesie
+        // ruch, zależy od slotu, w jakim radar umieścił dany pojazd — dlatego
+        // czytamy WSZYSTKIE i pokazujemy te, które faktycznie coś zgłaszają.
+        // (log z jazdy: raz porusza się pole A przy zerowym B, raz odwrotnie)
+        val slots = listOf(
+            ((b[4] and 0x0F) shl 2) or ((b[3] shr 6) and 0x03), // pole A
+            b[3] and 0x3F,                                      // pole B
+            ((b[5] and 0x03) shl 4) or ((b[4] shr 4) and 0x0F),  // pole C
         )
 
-        // cel 2: górny nibble b4 + 2 młodsze bity b5 (pole 6-bitowe, jak przy celu 1)
-        val units2 = ((b[5] and 0x03) shl 4) or ((b[4] shr 4) and 0x0F)
-        if (units2 > 0) {
-            val raw2 = bcd(b[7]) ?: 0
+        val targets = ArrayList<RadarTarget>(3)
+        slots.forEachIndexed { index, units ->
+            if (units <= 0) return@forEachIndexed
+            val distance = (units * DISTANCE_UNIT_M).toInt()
+            if (distance > MAX_RANGE_M) return@forEachIndexed
+            // nie dubluj tego samego pojazdu widzianego w dwóch polach
+            if (targets.any { kotlin.math.abs(it.distanceM - distance) <= 3 }) {
+                return@forEachIndexed
+            }
             targets += RadarTarget(
-                id = 2,
-                distanceM = (units2 * DISTANCE_UNIT_M).toInt(),
+                id = index + 1,
+                distanceM = distance,
                 // b7 bywa polem statusu — bierzemy je tylko jako sensowną prędkość
-                speedKmh = if (raw2 >= MIN_PLAUSIBLE_SPEED_KMH) raw2 else speed1,
+                speedKmh = if (index > 0 && speed2 >= MIN_PLAUSIBLE_SPEED_KMH) speed2 else speed1,
             )
         }
 
-        // cel 3: górny nibble b5 (widziany przy ramkach z trzema pojazdami)
-        val units3 = (b[5] shr 4) and 0x0F
-        if (units3 > 0) {
-            targets += RadarTarget(
-                id = 3,
-                distanceM = (units3 * DISTANCE_UNIT_M).toInt(),
-                speedKmh = speed1,
-            )
-        }
-
-        // odsiej cele poza fizycznym zasięgiem radaru — to zawsze błąd dekodowania,
-        // a nie realny pojazd (lepiej nie pokazać nic niż bzdurę na ekranie jazdy)
-        return RadarFrame(counter, targets.filter { it.distanceM <= MAX_RANGE_M })
+        return RadarFrame(b[0], targets)
     }
 }
