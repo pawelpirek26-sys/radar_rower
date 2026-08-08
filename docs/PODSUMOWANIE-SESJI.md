@@ -498,3 +498,30 @@ Wdrożone wszystkie propozycje z listy:
 6. Ekran jazdy nad ekranem blokady (przełącznik), tryb poziomy (orientacja
    fullSensor), eksport logu do pliku i udostępnianie (FileProvider) — schowek
    dławił się przy tysiącu wpisów.
+
+## 2026-08-08 — architektura Free/Pro (Google Play Billing) + historia przejazdów (v1.4.0)
+
+Fundament komercyjny, wdrożony ZANIM aplikacja urośnie — doklejanie billingu
+później zwykle kończy się przepisywaniem UI.
+
+**Model:** Free ma komplet bezpieczeństwa (wykrywanie, alerty, praca w tle,
+statystyki bieżącego przejazdu). Pro = jednorazowy produkt niekonsumowalny,
+odblokowuje WYGODĘ: historię przejazdów. Zero reklam, zero paywalla przy
+starcie, zero blokad na ekranie jazdy — sekcja Pro tylko w Ustawieniach.
+
+**Pliki:** `billing/BillingManager.kt` (Play Billing 7.1.1: query, launch,
+acknowledge, odtwarzanie zakupu przy każdym starcie), `billing/ProRepository.kt`
+(cache uprawnienia w DataStore — działa offline, bo rowerzysta bywa poza
+zasięgiem), `data/RideHistoryRepository.kt` (JSON w DataStore, limit 100
+przejazdów), `ui/HistoryScreen.kt`.
+
+**Decyzje projektowe:**
+- historia jest ZBIERANA także w Free, płatne jest tylko przeglądanie —
+  po zakupie user widzi swoje wcześniejsze przejazdy zamiast pustego ekranu,
+- brak weryfikacji zakupu po stronie serwera: przy jednorazowym zakupie
+  wygody koszt backendu przewyższa straty z podrobienia cache,
+- zakup potwierdzany (acknowledge) — bez tego Google zwraca pieniądze po 3 dniach.
+
+⚠ DO PODMIANY PRZED WYDANIEM: `BillingManager.PRO_PRODUCT_ID` musi zgadzać się
+z produktem w Play Console. W buildzie debug Play zwraca BILLING_UNAVAILABLE
+i apka pokazuje się jako Free — to oczekiwane.

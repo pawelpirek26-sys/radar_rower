@@ -68,6 +68,12 @@ fun SettingsScreen(
     onShowOnLockScreen: (Boolean) -> Unit,
     onSniffExtraServices: (Boolean) -> Unit,
     onResetStats: () -> Unit,
+    isPro: Boolean,
+    proPrice: String?,
+    proAvailable: Boolean,
+    onBuyPro: () -> Unit,
+    onRestorePro: () -> Unit,
+    onOpenHistory: () -> Unit,
     onDemoMode: (Boolean) -> Unit,
     onRequestIgnoreBattery: () -> Unit,
     onOpenAppSettings: () -> Unit,
@@ -357,6 +363,45 @@ fun SettingsScreen(
         )
         OutlinedButton(onClick = onResetStats, modifier = Modifier.padding(top = 8.dp)) {
             Text("Zeruj licznik")
+        }
+
+        // ------------------------------------------------ PRO
+        Section(if (isPro) "Pro ✓" else "Pro")
+        if (isPro) {
+            Text(
+                "Dziękujemy za wsparcie. Historia przejazdów jest odblokowana.",
+                fontSize = 14.sp,
+            )
+            Button(onClick = onOpenHistory, modifier = Modifier.padding(top = 8.dp)) {
+                Text("Historia przejazdów")
+            }
+        } else {
+            Text(
+                "Wszystkie funkcje bezpieczeństwa — wykrywanie, alerty, praca w tle — " +
+                    "są i zostaną darmowe. Pro to jednorazowa opłata za wygodę: " +
+                    "historia przejazdów zapisywana po każdej jeździe.",
+                fontSize = 14.sp,
+            )
+            Text(
+                "Twoje przejazdy są zapisywane już teraz — po zakupie zobaczysz " +
+                    "też te wcześniejsze.",
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            if (proAvailable) {
+                Button(onClick = onBuyPro, modifier = Modifier.padding(top = 8.dp)) {
+                    Text(proPrice?.let { "Kup Pro — $it" } ?: "Kup Pro")
+                }
+            } else {
+                Text(
+                    "Sklep Play niedostępny w tej wersji aplikacji.",
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            OutlinedButton(onClick = onRestorePro, modifier = Modifier.padding(top = 4.dp)) {
+                Text("Mam już Pro — przywróć")
+            }
         }
 
         // ------------------------------------------------ DEMO

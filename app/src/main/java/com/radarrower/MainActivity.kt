@@ -50,6 +50,10 @@ import com.radarrower.core.AlertPlayer
 import com.radarrower.core.DemoSimulator
 import com.radarrower.core.Permissions
 import com.radarrower.core.RadarRepository
+import com.radarrower.billing.BillingManager
+import com.radarrower.billing.ProRepository
+import com.radarrower.data.RideHistoryRepository
+import com.radarrower.ui.HistoryScreen
 import com.radarrower.data.SettingsRepository
 import com.radarrower.service.RadarService
 import com.radarrower.ui.DebugScreen
@@ -59,12 +63,16 @@ import com.radarrower.ui.ScanScreen
 import com.radarrower.ui.SettingsScreen
 import kotlinx.coroutines.launch
 
-private enum class Screen { RIDE, SCAN, DEBUG, SETTINGS }
+private enum class Screen { RIDE, SCAN, DEBUG, SETTINGS, HISTORY }
 
 class MainActivity : ComponentActivity() {
 
+    private lateinit var billing: BillingManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        billing = BillingManager(this, ProRepository.get(this))
+        billing.start()
         setContent {
             val themeSettings by SettingsRepository.get(this)
                 .settings.collectAsStateWithLifecycle(initialValue = null)
@@ -74,6 +82,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        billing.stop()
+        super.onDestroy()
     }
 
     @Composable
@@ -88,6 +101,11 @@ class MainActivity : ComponentActivity() {
         var batteryOptimized by remember { mutableStateOf(isBatteryOptimized()) }
         var screen by remember { mutableStateOf(Screen.RIDE) }
         var demoMode by remember { mutableStateOf(DemoSimulator.isRunning) }
+        val isPro by ProRepository.get(context).isPro.collectAsStateWithLifecycle(initialValue = false)
+        val proPrice by billing.price.collectAsStateWithLifecycle()
+        val proAvailable by billing.available.collectAsStateWithLifecycle()
+        val historyRepo = remember { RideHistoryRepository.get(context) }
+        val rides by historyRepo.rides.collectAsStateWithLifecycle(initialValue = emptyList())
 
         // odśwież stan uprawnień/baterii po powrocie z systemowych dialogów
         val lifecycleOwner = LocalLifecycleOwner.current
@@ -160,6 +178,14 @@ class MainActivity : ComponentActivity() {
                 onSkipBattery = { scope.launch { settingsRepo.setBatteryPromptDismissed(true) } },
             ) { permissionsGranted = hasAllPermissions() }
 
+            // historia i debug otwierane z Ustawień — cofnięcie wraca do Ustawień
+            screen == Screen.HISTORY -> BackHandlerTo({ screen = Screen.SETTINGS }) {
+                HistoryScreen(
+                    rides = rides,
+                    onClear = { scope.launch { historyRepo.clear() } },
+                )
+            }
+
             // debug otwierany z Ustawień — cofnięcie wraca do Ustawień
             screen == Screen.DEBUG -> BackHandlerTo({ screen = Screen.SETTINGS }) { DebugScreen() }
 
@@ -181,6 +207,23 @@ class MainActivity : ComponentActivity() {
                     onShowOnLockScreen = { v -> scope.launch { settingsRepo.setShowOnLockScreen(v) } },
                     onSniffExtraServices = { v -> scope.launch { settingsRepo.setSniffExtraServices(v) } },
                     onResetStats = { RadarRepository.resetRideStats() },
+                    isPro = isPro,
+                    proPrice = proPrice,
+                    proAvailable = proAvailable,
+                    onBuyPro = {
+                        if (!billing.launchPurchase(this@MainActivity)) {
+                            Toast.makeText(
+                                context,
+                                "Zakup chwilowo niedostępny — spróbuj ponownie później",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
+                    onRestorePro = {
+                        billing.refresh()
+                        Toast.makeText(context, "Sprawdzam zakupy…", Toast.LENGTH_SHORT).show()
+                    },
+                    onOpenHistory = { screen = Screen.HISTORY },
                     onPlayOnHeadphones = { v -> scope.launch { settingsRepo.setPlayOnHeadphones(v) } },
                     onSoundTheme = { v ->
                         scope.launch { settingsRepo.setSoundTheme(v) }

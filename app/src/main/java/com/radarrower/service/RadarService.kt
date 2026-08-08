@@ -18,6 +18,7 @@ import com.radarrower.core.AlertPlayer
 import com.radarrower.core.AlertEvent
 import com.radarrower.core.ConnectionState
 import com.radarrower.core.RadarRepository
+import com.radarrower.data.RideHistoryRepository
 import com.radarrower.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +72,9 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     @Volatile
     private var stopping = false
+
+    /** Początek bieżącego przejazdu — do zapisu w historii. */
+    private var rideStartedAtMs = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -146,6 +150,7 @@ class RadarService : Service(), BleRadarClient.Listener {
                 incompatibleCount = 0
                 if (RadarRepository.connectionState.value == ConnectionState.DISCONNECTED) {
                     RadarRepository.resetRideStats()
+                    rideStartedAtMs = System.currentTimeMillis()
                 }
                 connectSaved(initial = true)
             }
@@ -155,6 +160,7 @@ class RadarService : Service(), BleRadarClient.Listener {
 
     override fun onDestroy() {
         stopping = true
+        saveRideToHistory()
         reconnectJob?.cancel()
         client?.disconnect()
         client = null
@@ -252,6 +258,26 @@ class RadarService : Service(), BleRadarClient.Listener {
         } else {
             RadarRepository.setConnectionState(ConnectionState.RECONNECTING)
             scheduleReconnect()
+        }
+    }
+
+    /**
+     * Zapisuje podsumowanie przejazdu przy zatrzymaniu serwisu. Historia jest
+     * zbierana zawsze — wersja Pro odblokowuje tylko jej przeglądanie, dzięki
+     * czemu po zakupie widać wcześniejsze przejazdy, a nie pusty ekran.
+     *
+     * Zapis idzie na GlobalScope, bo scope serwisu jest już zamykany; operacja
+     * to jeden krótki zapis do DataStore.
+     */
+    private fun saveRideToHistory() {
+        val stats = RadarRepository.rideStats.value
+        if (stats.vehicles <= 0 || rideStartedAtMs == 0L) return
+        val startedAt = rideStartedAtMs
+        val duration = System.currentTimeMillis() - startedAt
+        val repo = RideHistoryRepository.get(applicationContext)
+        @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+        kotlinx.coroutines.GlobalScope.launch {
+            repo.add(stats, startedAt, duration)
         }
     }
 

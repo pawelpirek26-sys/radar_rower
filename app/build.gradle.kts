@@ -12,8 +12,8 @@ android {
         applicationId = "com.radarrower"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.3.0"
+        versionCode = 31
+        versionName = "1.4.0"
     }
 
     buildTypes {
@@ -50,4 +50,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    // zakup wersji Pro (produkt jednorazowy, niekonsumowalny)
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
 }
