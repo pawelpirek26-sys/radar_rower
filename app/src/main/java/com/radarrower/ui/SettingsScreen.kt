@@ -66,6 +66,7 @@ fun SettingsScreen(
     onDemoMode: (Boolean) -> Unit,
     onRequestIgnoreBattery: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    onOpenDebug: () -> Unit,
     onScanAgain: () -> Unit,
     onReconnect: () -> Unit,
     onForgetDevice: () -> Unit,
@@ -316,6 +317,17 @@ fun SettingsScreen(
                     "w formacie radaru. Wyłącz przed prawdziwą jazdą.",
                 fontSize = 13.sp,
             )
+        }
+
+        // ------------------------------------------------ DIAGNOSTYKA
+        Section("Diagnostyka")
+        Text(
+            "Log surowych pakietów z radaru — przydatny przy zgłaszaniu problemu " +
+                "albo dodawaniu obsługi nowego modelu.",
+            fontSize = 13.sp,
+        )
+        OutlinedButton(onClick = onOpenDebug, modifier = Modifier.padding(top = 8.dp)) {
+            Text("Otwórz log pakietów")
         }
 
         // ------------------------------------------------ O APLIKACJI

@@ -151,7 +151,8 @@ class MainActivity : ComponentActivity() {
                 onSkipBattery = { scope.launch { settingsRepo.setBatteryPromptDismissed(true) } },
             ) { permissionsGranted = hasAllPermissions() }
 
-            screen == Screen.DEBUG -> BackHandlerTo({ screen = Screen.RIDE }) { DebugScreen() }
+            // debug otwierany z Ustawień — cofnięcie wraca do Ustawień
+            screen == Screen.DEBUG -> BackHandlerTo({ screen = Screen.SETTINGS }) { DebugScreen() }
 
             screen == Screen.SETTINGS -> BackHandlerTo({ screen = Screen.RIDE }) {
                 SettingsScreen(
@@ -205,6 +206,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     },
+                    onOpenDebug = { screen = Screen.DEBUG },
                     onScanAgain = { screen = Screen.SCAN },
                     onReconnect = {
                         // ACTION_START zeruje backoff i wymusza świeże połączenie
@@ -246,7 +248,6 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onOpenSettings = { screen = Screen.SETTINGS },
-                    onOpenDebug = { screen = Screen.DEBUG },
                 )
             }
         }

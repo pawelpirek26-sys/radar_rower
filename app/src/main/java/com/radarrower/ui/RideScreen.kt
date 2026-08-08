@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -82,7 +81,6 @@ fun RideScreen(
     standbyEnabled: Boolean,
     onToggleStandby: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenDebug: () -> Unit,
 ) {
     val palette = roadPalette()
     val targets by RadarRepository.targets.collectAsStateWithLifecycle()
@@ -157,9 +155,6 @@ fun RideScreen(
                         contentDescription = "Tryb czuwania",
                         tint = if (standbyEnabled) accent else palette.textSecondary,
                     )
-                }
-                IconButton(onClick = onOpenDebug) {
-                    Icon(Icons.Filled.BugReport, contentDescription = "Debug", tint = palette.textSecondary)
                 }
                 IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Filled.Settings, contentDescription = "Ustawienia", tint = palette.textSecondary)
@@ -313,7 +308,6 @@ private fun RoadStrip(
         val riderX = size.width / 2f + roadWidth / 4f
         // koła/detale roweru jasne — jezdnia jest ciemna w obu motywach
         drawSideBike(riderX, riderY, riderStyle, palette.rider, palette.roadLine)
-        drawContext.canvas.nativeCanvas.drawText("TY", riderX - 24f, riderY + 92f, speedPaint)
 
         // auta doganiają: dystans 0 = tuż za rowerzystą (góra), MAX = dół pasa
         val laneX = size.width / 2f - roadWidth / 4f

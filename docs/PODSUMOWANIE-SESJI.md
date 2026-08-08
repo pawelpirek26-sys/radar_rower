@@ -467,3 +467,11 @@ bez kompensacji GPS. Wdrożone konsekwentnie:
 - domyślny próg 50 → 35 km/h (50 było dobrane dla prędkości auta względem
   drogi; przy zbliżaniu praktycznie nigdy by nie zadziałał).
   ❗Istniejąca instalacja zachowuje zapisane 50 — user powinien zmienić ręcznie.
+
+## 2026-08-08 — porządki na ekranie jazdy (v1.2.1)
+
+- Usunięty napis „TY" pod rowerem (sylwetka mówi sama za siebie).
+- Debug przeniesiony z paska ekranu jazdy do Ustawień → nowa sekcja
+  „Diagnostyka" → „Otwórz log pakietów". Na ekranie jazdy zostały tylko
+  dwie ikony: czuwanie (księżyc) i ustawienia (zębatka). Cofnięcie z logu
+  wraca do Ustawień, nie na ekran jazdy.
