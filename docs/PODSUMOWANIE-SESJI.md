@@ -407,3 +407,23 @@ Naprawa „czasem prędkość nie zgadza się":
 - w zamian aplikacja **liczy prędkość sama** z tempa zbliżania się celu
   (punkt odniesienia przesuwany dopiero przy realnej zmianie dystansu,
   wynik wygładzany) — działa dla każdego śladu, niezależnie od firmware'u.
+
+## 2026-08-08 — walidacja na rowerze (5 km) — parser działa
+
+Trzy pełne przejazdy aut z realnej jazdy, wszystkie zdekodowane poprawnie:
+- 119 m → 3 m w 16,1 s (zbliżanie 26 km/h) — pełna, ciągła krzywa,
+- 75 m → 3 m w 12,5 s (21 km/h),
+- 75 m → 38 m z DWOMA/TRZEMA celami naraz (pola A, B i C jednocześnie,
+  każde malejące płynnie) — potwierdza, że wielocelowość działa.
+
+🔑 ODKRYCIE SEMANTYCZNE: gdy radar podaje prędkość (b6 = 0x31 = 31 km/h),
+jest to prędkość auta **względem drogi**. Prędkość liczona przez aplikację
+ze zmiany dystansu to prędkość **zbliżania** (auto minus rower) — w tym
+zdarzeniu 17 km/h. Różnica 14 km/h ≈ prędkość roweru usera. Obie wartości
+są poprawne, ale to różne wielkości.
+KONSEKWENCJA dla progu czerwonego alertu: przy szybkim aucie i szybkiej
+jeździe prędkość zbliżania bywa DUŻO niższa niż prędkość auta, więc próg
+ustawiony „jak dla prędkości auta" może nie zadziałać, gdy radar nie poda
+własnego odczytu. Do decyzji usera: kompensacja prędkością roweru z GPS
+(wymaga uprawnienia lokalizacji) albo przeetykietowanie progu na
+„prędkość zbliżania".
