@@ -427,3 +427,13 @@ ustawiony „jak dla prędkości auta" może nie zadziałać, gdy radar nie poda
 własnego odczytu. Do decyzji usera: kompensacja prędkością roweru z GPS
 (wymaga uprawnienia lokalizacji) albo przeetykietowanie progu na
 „prędkość zbliżania".
+
+## 2026-08-08 — ✅ dystans potwierdzony NIEZALEŻNIE licznikiem rowerowym
+
+User zweryfikował odległość jednego auta z odczytem licznika (GEOID), który
+czyta ten sam radar po ANT+. To potwierdzenie z niezależnego źródła i po
+zupełnie innej ścieżce dekodowania — kalibracja 3,125 m jest TRAFNA, nie
+tylko wewnętrznie spójna. Dekodowanie dystansu uznane za zamknięte.
+
+Otwarte pozostaje jedynie: czy próg czerwonego alertu ma działać na prędkości
+auta względem drogi (wymaga kompensacji GPS) czy na prędkości zbliżania.

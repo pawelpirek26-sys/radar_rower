@@ -29,6 +29,10 @@ enum class RadarProtocol { VARIA, W100 }
  * Cztery niezależne zdarzenia dały przelicznik 2,60 / 2,99 / 3,55 / 3,32 m
  * (średnio 3,11 m). Wcześniejsze sprzeczne wyniki brały się stąd, że logi
  * zbierano w jadącym samochodzie.
+ *
+ * ✅ POTWIERDZENIE NIEZALEŻNE (2026-08-08): odczyt dystansu zgodny z licznikiem
+ * rowerowym czytającym ten sam radar po ANT+ — inne źródło i inna ścieżka
+ * dekodowania, więc kalibracja jest trafna, a nie tylko wewnętrznie spójna.
  */
 object W100Parser {
 
