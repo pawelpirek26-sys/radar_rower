@@ -437,3 +437,15 @@ tylko wewnętrznie spójna. Dekodowanie dystansu uznane za zamknięte.
 
 Otwarte pozostaje jedynie: czy próg czerwonego alertu ma działać na prędkości
 auta względem drogi (wymaga kompensacji GPS) czy na prędkości zbliżania.
+
+## 2026-08-08 — alerty słyszalne przy muzyce (v1.1.1)
+
+Zgłoszenie usera: przy słuchaniu muzyki w słuchawkach alerty są niesłyszalne.
+Przyczyna: aplikacja nie zgłaszała przejęcia uwagi audio (audio focus), więc
+muzyka grała pełną głośnością i zagłuszała krótki sygnał. Naprawa:
+- zwykły alert: AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK — system sam ścisza muzykę
+  na czas sygnału i przywraca ją po nim,
+- pilny (czerwony): AUDIOFOCUS_GAIN_TRANSIENT — muzyka na moment milknie,
+- przy aktywnej muzyce dolna część suwaka głośności jest podbijana do 75%,
+  bo cichy alert przepadłby nawet w przyciszonym utworze,
+- uwaga audio jest oddawana zaraz po sygnale (muzyka wraca sama).

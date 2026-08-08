@@ -3,6 +3,7 @@ package com.radarrower.core
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
@@ -64,7 +65,7 @@ class AlertPlayer(context: Context) {
                 val (freqs, durations) = tonesFor(s.soundTheme, event)
                 // pilny alert ma własną głośność — może grać głośniej niż zwykłe
                 val gain = if (event == AlertEvent.URGENT) s.urgentVolume else s.volume
-                playTone(s, freqs, durations, gain)
+                playTone(s, freqs, durations, gain, event == AlertEvent.URGENT)
             }
         }
         if (s.vibrationEnabled) vibrate(event)
@@ -124,7 +125,38 @@ class AlertPlayer(context: Context) {
      * aplikacji (setVolume), a strumień ALARM dodatkowo uniezależnia od
      * głośności mediów; inaczej pełna skala względem strumienia.
      */
-    private fun playTone(s: AppSettings, freqs: FloatArray, durationsMs: LongArray, gain: Float) {
+    /**
+     * Prosi system o uwagę audio na czas alertu. Bez tego muzyka gra pełną
+     * głośnością i zagłusza krótki sygnał — Android sam ją przycisza
+     * (a przy pilnym alercie wręcz wstrzymuje), gdy zgłosimy przejęcie.
+     */
+    private fun requestAudioFocus(
+        audioManager: AudioManager,
+        attrs: AudioAttributes,
+        urgent: Boolean,
+    ): AudioFocusRequest? {
+        val gainType = if (urgent) {
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT // pilny alert: muzyka milknie
+        } else {
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK // zwykły: muzyka ścisza
+        }
+        val request = AudioFocusRequest.Builder(gainType)
+            .setAudioAttributes(attrs)
+            .setWillPauseWhenDucked(false)
+            .setOnAudioFocusChangeListener { }
+            .build()
+        return request.takeIf {
+            runCatching { audioManager.requestAudioFocus(it) }.isSuccess
+        }
+    }
+
+    private fun playTone(
+        s: AppSettings,
+        freqs: FloatArray,
+        durationsMs: LongArray,
+        gain: Float,
+        urgent: Boolean,
+    ) {
         val sampleRate = 22050
 
         val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -187,6 +219,9 @@ class AlertPlayer(context: Context) {
             .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
             .build()
 
+        // przejmij uwagę audio ZANIM zagramy — inaczej muzyka zagłuszy alert
+        val focus = requestAudioFocus(audioManager, attrs, urgent)
+
         runCatching {
             val track = AudioTrack.Builder()
                 .setAudioAttributes(attrs)
@@ -198,13 +233,19 @@ class AlertPlayer(context: Context) {
             if (preferred != null) track.setPreferredDevice(preferred)
             if (s.independentVolume) {
                 // krzywa percepcyjna: gain liniowy brzmi „za głośno" na dole skali
-                // (10% liniowo to ledwie -20 dB); sześcian daje sensowny zakres
-                track.setVolume(gain * gain * gain)
+                // (10% liniowo to ledwie -20 dB); sześcian daje sensowny zakres.
+                // Przy grającej muzyce podbijamy dół skali — cichy alert
+                // przepadłby nawet w przyciszonym utworze.
+                val effective = if (audioManager.isMusicActive) maxOf(gain, 0.75f) else gain
+                track.setVolume(effective * effective * effective)
             }
             track.play()
             // zwolnij po zakończeniu odtwarzania
             Thread.sleep(totalMs + 100)
             track.release()
         }
+
+        // oddaj uwagę audio — muzyka wraca do pełnej głośności
+        focus?.let { runCatching { audioManager.abandonAudioFocusRequest(it) } }
     }
 }
