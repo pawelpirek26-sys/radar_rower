@@ -152,6 +152,9 @@ class RadarService : Service(), BleRadarClient.Listener {
     }
 
     override fun onBattery(levelPercent: Int) {
+        // logujemy każdy odczyt — stała wartość przez wiele godzin oznacza,
+        // że radar nie implementuje serwisu baterii, tylko zgłasza atrapę
+        RadarRepository.logDiagnostic("DIAG: odczyt baterii radaru = $levelPercent%")
         RadarRepository.setBatteryLevel(levelPercent)
     }
 

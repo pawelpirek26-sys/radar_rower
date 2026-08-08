@@ -374,3 +374,18 @@ Drugi, znacznie dłuższy log (11:32–11:34, realne przejazdy) wymusił korekt�
 
 ❗ Do domknięcia: pomiar ze ZNANYCH odległości (radar nieruchomy, cel 10/20/40 m)
 — to jedyny sposób, by przypiąć jednostkę bez zgadywania z czasu.
+
+## 2026-08-08 — bateria „100%" i kontekst testów w samochodzie (v1.0.3)
+
+- Bateria: wartość pochodzi ze standardowego serwisu BLE 0x180F. User zgłasza,
+  że radar raczej nie ma 100%. Każdy odczyt trafia teraz do logu Debug (DIAG) —
+  stała wartość przez wiele godzin = radar zgłasza atrapę (typowe dla klonów).
+  W Ustawieniach dopisek „(wg radaru)". Ramka spoczynkowa `30 00 55 41 10 04 00 00`
+  była identyczna przez ~12 h, więc bajty 55/41/10/04 to też NIE bateria,
+  tylko stała statusowa/wersja.
+- ❗KLUCZOWY KONTEKST: dotychczasowe logi zbierane były W SAMOCHODZIE. To
+  tłumaczy stałe tempo spadku dystansu (~3,07 jednostki/s) w wielu niezależnych
+  zdarzeniach — to nie były różne pojazdy o różnych prędkościach, tylko
+  najpewniej obiekty nieruchome mijane ze stałą prędkością auta. Dlatego
+  kalibracja jednostki z Δdystans/Δczas dawała sprzeczne wyniki.
+  Dane z roweru (i z pomiaru ze znanych odległości) będą rozstrzygające.

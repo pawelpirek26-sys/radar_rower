@@ -101,7 +101,7 @@ fun SettingsScreen(
             Text(
                 "Stan: " + when (connection) {
                     ConnectionState.CONNECTED -> "połączono ✓" +
-                        (battery?.let { " · bateria $it%" } ?: "")
+                        (battery?.let { " · bateria $it% (wg radaru)" } ?: "")
                     ConnectionState.CONNECTING -> "łączenie…"
                     ConnectionState.RECONNECTING -> "ponawianie połączenia…"
                     ConnectionState.SCANNING -> "szukanie…"
