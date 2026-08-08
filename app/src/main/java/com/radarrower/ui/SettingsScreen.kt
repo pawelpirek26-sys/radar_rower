@@ -314,7 +314,7 @@ fun SettingsScreen(
         // ------------------------------------------------ O APLIKACJI
         Section("O aplikacji")
         Text(
-            "RadarRower $versionName — wyświetlacz radarów rowerowych zgodnych " +
+            "Uniwersalny Radar Rowerowy $versionName — wyświetlacz radarów zgodnych " +
                 "z protokołem Garmin Varia (W100, Varia, Gardia, Magene i inne).",
             fontSize = 13.sp,
             modifier = Modifier.padding(bottom = 16.dp),

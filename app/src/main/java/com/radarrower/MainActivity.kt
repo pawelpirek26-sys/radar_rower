@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -276,9 +277,13 @@ class MainActivity : ComponentActivity() {
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("RadarRower", fontSize = 34.sp, color = MaterialTheme.colorScheme.primary)
             Text(
-                "Wyświetlacz radaru rowerowego W100. Dwa kroki i jedziemy:",
+                stringResource(R.string.app_name_full),
+                fontSize = 30.sp,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                "Wyświetlacz radarów rowerowych. Dwa kroki i jedziemy:",
                 fontSize = 16.sp,
                 modifier = Modifier.padding(vertical = 16.dp),
             )

@@ -1,4 +1,4 @@
-# RadarRower
+# Uniwersalny Radar Rowerowy
 
 Natywna aplikacja Android (Kotlin + Jetpack Compose) — wyświetlacz dla radarów
 rowerowych zgodnych z protokołem BLE **Garmin Varia**: W100, Garmin Varia

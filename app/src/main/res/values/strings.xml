@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RadarRower</string>
+    <!-- Krótka nazwa pod ikoną — launchery ucinają dłuższe do „Uniwersalny…" -->
+    <string name="app_name">Radar Rowerowy</string>
+    <!-- Pełna nazwa: ekran powitalny, sekcja O aplikacji -->
+    <string name="app_name_full">Uniwersalny Radar Rowerowy</string>
     <string name="notif_channel_service">Połączenie z radarem</string>
-    <string name="notif_channel_service_desc">Stały status połączenia z radarem W100</string>
+    <string name="notif_channel_service_desc">Stały status połączenia z radarem rowerowym</string>
 </resources>

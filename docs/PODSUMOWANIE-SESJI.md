@@ -343,3 +343,13 @@ dekodowania. Demo wymusza protokół Varia (fabrykuje ramki w tym formacie).
 
 ⚠ Do kalibracji w terenie: prędkość celu 2 (b7 bywa polem statusu — brana
 tylko gdy ≥10 km/h, inaczej dziedziczy prędkość celu 1) i pole celu 3.
+
+## 2026-08-08 — nowa nazwa: Uniwersalny Radar Rowerowy (v1.0.1)
+
+Nazwa zmieniona na życzenie usera. Podział na dwa ciągi:
+- `app_name` = „Radar Rowerowy" — etykieta pod ikoną (launchery ucinają dłuższe
+  nazwy do „Uniwersalny…", co byłoby nieczytelne),
+- `app_name_full` = „Uniwersalny Radar Rowerowy" — ekran powitalny i „O aplikacji".
+applicationId ŚWIADOMIE bez zmian (com.radarrower) — zmiana utworzyłaby drugą
+aplikację na telefonie i skasowała sparowanie oraz ustawienia. Teksty
+przestały odwoływać się do konkretnego modelu radaru.
